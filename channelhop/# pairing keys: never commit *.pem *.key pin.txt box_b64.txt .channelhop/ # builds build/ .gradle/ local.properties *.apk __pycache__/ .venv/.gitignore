@@ -1,0 +1,14 @@
+# pairing keys: never commit
+*.pem
+*.key
+pin.txt
+box_b64.txt
+.channelhop/
+# builds
+build/
+.gradle/
+local.properties
+*.apk
+__pycache__/
+.venv/
+.DS_Store
