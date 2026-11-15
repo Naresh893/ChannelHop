@@ -1,0 +1,2779 @@
+{
+ "source": "https://www.airtel.in/plans/dth/all-channel-list",
+ "fetched": "2026-11-14",
+ "note": "Airtel Xstream IPTV uses the same numbers as Airtel DTH (754, 755 checked on a box). Numbers can change; refresh from the source.",
+ "channels": [
+  {
+   "number": 125,
+   "name": "Dangal Tv",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Dangal%20TV-min.png"
+  },
+  {
+   "number": 164,
+   "name": "Star World Premiere HD",
+   "quality": "HD",
+   "genre": "English",
+   "logo": null
+  },
+  {
+   "number": 165,
+   "name": "STAR WORLD",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": null
+  },
+  {
+   "number": 166,
+   "name": "Star World HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": null
+  },
+  {
+   "number": 168,
+   "name": "ZEE CAFE",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ZEE-CAFE.png"
+  },
+  {
+   "number": 169,
+   "name": "ZEE CAFE HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ZCafe_HD%20orange.png"
+  },
+  {
+   "number": 173,
+   "name": "COLORS INFINITY",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/COLORS-INFINITY.png"
+  },
+  {
+   "number": 174,
+   "name": "COLORS INFINITY HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/COLORS-INFINITY-hd.png"
+  },
+  {
+   "number": 175,
+   "name": "Comedy Central",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Comedy-Central.png"
+  },
+  {
+   "number": 177,
+   "name": "Disney International HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Disney-International-HD.png"
+  },
+  {
+   "number": 178,
+   "name": "TV5 Monde",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV5-Monde-Asia_LCN-178_264x144.png"
+  },
+  {
+   "number": 243,
+   "name": "STAR MOVIES",
+   "quality": "SD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-MOVIES.png"
+  },
+  {
+   "number": 244,
+   "name": "Star Movies HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-MOVIES-hd.png"
+  },
+  {
+   "number": 247,
+   "name": "PIX",
+   "quality": "SD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PIX-SD.jpg"
+  },
+  {
+   "number": 248,
+   "name": "Sony Pix HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sony-Pix-HD.jpg"
+  },
+  {
+   "number": 249,
+   "name": "Movies Now",
+   "quality": "SD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Movies-Now.png"
+  },
+  {
+   "number": 250,
+   "name": "MOVIES NOW HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MOVIES-NOW-HD.png"
+  },
+  {
+   "number": 251,
+   "name": "Star Movies Select HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Movies-Select-HD.png"
+  },
+  {
+   "number": 252,
+   "name": "MN+",
+   "quality": "SD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MN.png"
+  },
+  {
+   "number": 253,
+   "name": "Romedy Now",
+   "quality": "SD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Romedy-Now_LCN-253_264x144.png"
+  },
+  {
+   "number": 256,
+   "name": "&Flix HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/%26Flix-HD.png"
+  },
+  {
+   "number": 261,
+   "name": "MNX",
+   "quality": "SD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MN.png"
+  },
+  {
+   "number": 262,
+   "name": "MNX HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MNX-hd.png"
+  },
+  {
+   "number": 265,
+   "name": "&Prive HD",
+   "quality": "HD",
+   "genre": "English Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Prive-HD.png"
+  },
+  {
+   "number": 277,
+   "name": "Star Sports 1",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Sports%201-min.png"
+  },
+  {
+   "number": 278,
+   "name": "Star Sports 1 HD",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-hd.jpg"
+  },
+  {
+   "number": 279,
+   "name": "Star Sports 2",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sports_logo_Vertical_SD_1920_x_961_Star-Sports-2.jpg"
+  },
+  {
+   "number": 280,
+   "name": "Star Sports 2 HD",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-2-hd.jpg"
+  },
+  {
+   "number": 283,
+   "name": "Star Sports Select 1",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-1.jpg"
+  },
+  {
+   "number": 284,
+   "name": "Star Sports Select 2",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-2.jpg"
+  },
+  {
+   "number": 285,
+   "name": "SONY SPORTS TEN 1",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-1.jpg"
+  },
+  {
+   "number": 286,
+   "name": "SONY SPORTS TEN 1 HD Rs 19",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-hd.jpg"
+  },
+  {
+   "number": 287,
+   "name": "SONY SPORTS TEN 2",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-2.jpg"
+  },
+  {
+   "number": 288,
+   "name": "SONY SPORTS TEN 2 HD Rs 17",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-2-hd.jpg"
+  },
+  {
+   "number": 291,
+   "name": "SONY SPORTS TEN 5 Rs 15",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-5.jpg"
+  },
+  {
+   "number": 292,
+   "name": "SONY SPORTS TEN 5 HD Rs 19",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-5-hd.jpg"
+  },
+  {
+   "number": 293,
+   "name": "SPORTS18-1",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sports18.png"
+  },
+  {
+   "number": 300,
+   "name": "Star Sports Select 1 HD",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-1-hd.jpg"
+  },
+  {
+   "number": 301,
+   "name": "Star Sports Select 2 HD",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-2-hd.png"
+  },
+  {
+   "number": 304,
+   "name": "Eurosport",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Eurosport-Logo.png"
+  },
+  {
+   "number": 305,
+   "name": "Eurosport HD",
+   "quality": "HD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Eurosport-Logo_LCN-304.png"
+  },
+  {
+   "number": 307,
+   "name": "1SPORTS",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/1SPORTS.png"
+  },
+  {
+   "number": 387,
+   "name": "TIMES NOW",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Times-Now.png"
+  },
+  {
+   "number": 388,
+   "name": "Times Now World HD",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Times-Now-hd.png"
+  },
+  {
+   "number": 389,
+   "name": "NDTV 24x7",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NDTV.png"
+  },
+  {
+   "number": 390,
+   "name": "CNN News 18",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNN-News-18.png"
+  },
+  {
+   "number": 391,
+   "name": "INDIA TODAY",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/India-Today_264x144.png"
+  },
+  {
+   "number": 392,
+   "name": "India Ahead",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": null
+  },
+  {
+   "number": 393,
+   "name": "Republic TV",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Republic-TV.jpg"
+  },
+  {
+   "number": 394,
+   "name": "Mirror Now",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MIRROR-NOW-LOGO-01.png"
+  },
+  {
+   "number": 395,
+   "name": "WION",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/WION.jpg"
+  },
+  {
+   "number": 396,
+   "name": "CNBC TV18",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNBC-TV18.png"
+  },
+  {
+   "number": 397,
+   "name": "ET NOW",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ET-NOW.png"
+  },
+  {
+   "number": 398,
+   "name": "NDTV Profit Prime",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NDTV-Profit-Prime.jpg"
+  },
+  {
+   "number": 402,
+   "name": "CNN International",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNN-International.png"
+  },
+  {
+   "number": 403,
+   "name": "BBC WORLD NEWS",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/BBC-WORLD-NEWS.png"
+  },
+  {
+   "number": 404,
+   "name": "Russia Today",
+   "quality": "SD",
+   "genre": "English News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/rt-russia-today7572.jpeg"
+  },
+  {
+   "number": 408,
+   "name": "TLC",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TLC.png"
+  },
+  {
+   "number": 409,
+   "name": "TLC World HD",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TLC-hd.png"
+  },
+  {
+   "number": 410,
+   "name": "GOOD TIMES",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GOOD-TiMES-410.jpg"
+  },
+  {
+   "number": 413,
+   "name": "Zee Zest",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Zest.jpg"
+  },
+  {
+   "number": 414,
+   "name": "TRAVELXP SD",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TRAVELXP-SD.jpg"
+  },
+  {
+   "number": 422,
+   "name": "National Geographic Channel",
+   "quality": "SD",
+   "genre": "Infotainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/National-Geographic.png"
+  },
+  {
+   "number": 424,
+   "name": "Fox Life",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/FOX-LIFE.png"
+  },
+  {
+   "number": 425,
+   "name": "Fox Life HD",
+   "quality": "HD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Fox-Life-HD.png"
+  },
+  {
+   "number": 435,
+   "name": "Nat Geo Wild HD",
+   "quality": "HD",
+   "genre": "Infotainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nat-Geo-Wild.png"
+  },
+  {
+   "number": 462,
+   "name": "Udaya comedy",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Udaya-Comedy.jpg"
+  },
+  {
+   "number": 464,
+   "name": "Cbeebies",
+   "quality": "SD",
+   "genre": "Kids",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Cbeebies-01.png"
+  },
+  {
+   "number": 472,
+   "name": "Kushi TV",
+   "quality": "SD",
+   "genre": "Kids",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kushi-TV.jpg"
+  },
+  {
+   "number": 473,
+   "name": "Chintu TV",
+   "quality": "SD",
+   "genre": "Kids",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Chintu%20TV.jpg"
+  },
+  {
+   "number": 474,
+   "name": "CHUTTI TV",
+   "quality": "SD",
+   "genre": "Kids",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/chutti.jpg"
+  },
+  {
+   "number": 475,
+   "name": "KOCHU TV",
+   "quality": "SD",
+   "genre": "Kids",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/kochu.jpg"
+  },
+  {
+   "number": 507,
+   "name": "VH1",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/VH1.png"
+  },
+  {
+   "number": 516,
+   "name": "ZEE MARATHI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Marathi.jpg"
+  },
+  {
+   "number": 517,
+   "name": "Zee Marathi HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-marathi-hd.jpeg"
+  },
+  {
+   "number": 518,
+   "name": "Colors MARATHI",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors-Marathi.png"
+  },
+  {
+   "number": 519,
+   "name": "Colors Marathi HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors%20Marathi%20HD.png"
+  },
+  {
+   "number": 520,
+   "name": "STAR PRAVAH",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/star-pravah.jpeg"
+  },
+  {
+   "number": 521,
+   "name": "STAR PRAVAH HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Pravah%20HD-min.png"
+  },
+  {
+   "number": 522,
+   "name": "ZEE YUVA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Yuva.jpg"
+  },
+  {
+   "number": 524,
+   "name": "Sony Marathi",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sony_MARATHI.jpg"
+  },
+  {
+   "number": 525,
+   "name": "SUN MARATHI @ FREE",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SUN-MARATHI---1.jpg"
+  },
+  {
+   "number": 527,
+   "name": "Zee Talkies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Talkies.png"
+  },
+  {
+   "number": 528,
+   "name": "Zee Talkies HD",
+   "quality": "HD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Talkies-HD.jpg"
+  },
+  {
+   "number": 529,
+   "name": "Shemaroo Marathibana @ FREE",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Shemaroo-Marathibana-min.png"
+  },
+  {
+   "number": 530,
+   "name": "FAKT MARATHI @ FREE",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/FAKT%20Marathi.png"
+  },
+  {
+   "number": 531,
+   "name": "Pravah Picture",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Pravah-Picture.jpg"
+  },
+  {
+   "number": 534,
+   "name": "ABP MAJHA",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABP%20Majha.png"
+  },
+  {
+   "number": 535,
+   "name": "SAAM TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Saam%20TV.png"
+  },
+  {
+   "number": 537,
+   "name": "News 18 Lokmat",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Lokmat_WB.png"
+  },
+  {
+   "number": 538,
+   "name": "Zee 24 Taas",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-24-Tass.jpg"
+  },
+  {
+   "number": 539,
+   "name": "TV9 Marathi",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Marathi.png"
+  },
+  {
+   "number": 540,
+   "name": "Lokshahi",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Lokshahi%20340.png"
+  },
+  {
+   "number": 541,
+   "name": "JAI MAHARASHTRA @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": null
+  },
+  {
+   "number": 545,
+   "name": "MAIBOLI",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Maibili-min.png"
+  },
+  {
+   "number": 546,
+   "name": "Sangeet Marathi",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sangeet%20Marathi-min.jpg"
+  },
+  {
+   "number": 548,
+   "name": "DD SAHYADRI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Sahyadri_LCN-548_264x144.png"
+  },
+  {
+   "number": 555,
+   "name": "PTC Punjabi",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ptc-music.jpeg"
+  },
+  {
+   "number": 556,
+   "name": "Zee Punjabi",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-punjabi.jpeg"
+  },
+  {
+   "number": 557,
+   "name": "CHARDIKLA TIMETV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Chardikala-Time-TV_LCN-557_264x144.png"
+  },
+  {
+   "number": 559,
+   "name": "Maha Punjabi",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Maha-Punjabi_%28LCN-559%29.png"
+  },
+  {
+   "number": 560,
+   "name": "PTC Punjabi Gold",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC-Punjabi%20Gold_LCN-560-min.jpg"
+  },
+  {
+   "number": 561,
+   "name": "Pitaara TV",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Pitaara%20TV-min.png"
+  },
+  {
+   "number": 562,
+   "name": "ZEE PUNJABI",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-punjabi.jpeg"
+  },
+  {
+   "number": 563,
+   "name": "PTC NEWS",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC-News-min.jpg"
+  },
+  {
+   "number": 565,
+   "name": "Living India News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/living-india-news.jpeg"
+  },
+  {
+   "number": 567,
+   "name": "MH 1",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MH1_LCN567_160X90.png"
+  },
+  {
+   "number": 568,
+   "name": "PTC Chak de",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC%20Chakde-min.png"
+  },
+  {
+   "number": 569,
+   "name": "Tashan",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/9x-Tashan_.png"
+  },
+  {
+   "number": 570,
+   "name": "Balle Balle",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Balle-Balle_LCN-570_264x144.png"
+  },
+  {
+   "number": 571,
+   "name": "PUNJABI HITS @FREE",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Punjabi%20Hits-min.png"
+  },
+  {
+   "number": 572,
+   "name": "DD PUNJABI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Punjabi_LCN-572_264x144.png"
+  },
+  {
+   "number": 573,
+   "name": "PTC Music",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ptc-music.jpeg"
+  },
+  {
+   "number": 574,
+   "name": "PTC Simran",
+   "quality": "SD",
+   "genre": "Religious",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC%20Simran_LCN-574-min.jpg"
+  },
+  {
+   "number": 578,
+   "name": "COLORS GUJARATI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Gujrati_BB.png"
+  },
+  {
+   "number": 582,
+   "name": "News18 Gujarati",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Gujrati_WB.png"
+  },
+  {
+   "number": 583,
+   "name": "TV9 Gujarati",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Gujarati.png"
+  },
+  {
+   "number": 584,
+   "name": "CNBC Bajar",
+   "quality": "SD",
+   "genre": "Business News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNBC_Bazaar_BB.png"
+  },
+  {
+   "number": 585,
+   "name": "VTV News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/VTV%20News%20LCN585_264x144.png"
+  },
+  {
+   "number": 586,
+   "name": "Sandesh News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sandesh%20news.png"
+  },
+  {
+   "number": 587,
+   "name": "Zee 24 Kalak",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-24-Kalak-min.png"
+  },
+  {
+   "number": 588,
+   "name": "ABP Asmita",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABP-Asmita_LCN_588_264x144.png"
+  },
+  {
+   "number": 589,
+   "name": "DD Girnar",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-GIRNAR_264x144.png"
+  },
+  {
+   "number": 590,
+   "name": "GUJARAT FIRST 24X7 NEWS",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gujarat%20First%20Logo%2024x7%20PNG%20FILE.PNG"
+  },
+  {
+   "number": 591,
+   "name": "GS TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GS_1%20%280-00-00-00%29_015345-min.png"
+  },
+  {
+   "number": 593,
+   "name": "COLORS ORIYA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Oriya_BB.png"
+  },
+  {
+   "number": 594,
+   "name": "Tarang",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Tarang%20TV%20Logo-min.png"
+  },
+  {
+   "number": 595,
+   "name": "Prarthana TV",
+   "quality": "SD",
+   "genre": "Religious",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Prarthana%20TV-min.png"
+  },
+  {
+   "number": 596,
+   "name": "Zee Sarthak",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Sarthak.jpg"
+  },
+  {
+   "number": 597,
+   "name": "Star Kiran",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Kiran.jpg"
+  },
+  {
+   "number": 599,
+   "name": "India News Gujarat",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/India%20News%20Gujarat.jpg"
+  },
+  {
+   "number": 600,
+   "name": "SIDHARTH TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sidharth%20TV_LCN-600-min.png"
+  },
+  {
+   "number": 601,
+   "name": "Alankar",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Alankar-min.png"
+  },
+  {
+   "number": 602,
+   "name": "SIDHARTH GOLD",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sidharth%20Gold_LCN-602-min.png"
+  },
+  {
+   "number": 603,
+   "name": "News18 Oriya",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Oriya_WB.png"
+  },
+  {
+   "number": 604,
+   "name": "Kanak News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kanak%20News-min.png"
+  },
+  {
+   "number": 605,
+   "name": "Kalinga TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalinga-TV_LCN-605_264x144.png"
+  },
+  {
+   "number": 607,
+   "name": "OTV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/OTV_LCN-607_264x144.png"
+  },
+  {
+   "number": 609,
+   "name": "ARGUS @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Argus%20News_LCN%20609-min.png"
+  },
+  {
+   "number": 611,
+   "name": "Nandighosha TV @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nandighosha-TV-611.jpg"
+  },
+  {
+   "number": 612,
+   "name": "News7@ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NEWS7-Logo-min.png"
+  },
+  {
+   "number": 614,
+   "name": "TARANG MUSIC",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Tarang%20Music.png"
+  },
+  {
+   "number": 616,
+   "name": "SIDHARTH BHAKTI",
+   "quality": "SD",
+   "genre": "Devotional",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sidharth%20Bhakti_LCN-616-min.png"
+  },
+  {
+   "number": 617,
+   "name": "DD ORIYA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Oriya_LCN-617_264x144.png"
+  },
+  {
+   "number": 622,
+   "name": "Zee Salaam",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Salaam-min.png"
+  },
+  {
+   "number": 624,
+   "name": "Tehzeeb TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Tehzeeb-TV_LCN-624_264x144.png"
+  },
+  {
+   "number": 625,
+   "name": "News18 JK Himachal",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_JKLH_WB.jpg"
+  },
+  {
+   "number": 626,
+   "name": "DD Urdu",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-urdu_LCN%20626_264x144.png"
+  },
+  {
+   "number": 627,
+   "name": "DD Kashir",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Kashir_264x144.png"
+  },
+  {
+   "number": 628,
+   "name": "Mercy TV @ FREE",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": null
+  },
+  {
+   "number": 629,
+   "name": "Gulistan News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gulistan-News_264x144.png"
+  },
+  {
+   "number": 630,
+   "name": "AALAMI SAMAY @ FREE",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": null
+  },
+  {
+   "number": 632,
+   "name": "RENGONI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Rengoni-min.png"
+  },
+  {
+   "number": 633,
+   "name": "RANG",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/rang_LCN-633_264x144.png"
+  },
+  {
+   "number": 634,
+   "name": "Jonack",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/jonack_LCN634_264x144.png"
+  },
+  {
+   "number": 635,
+   "name": "Ramdhenu TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Logo_of_Ramdhenu.png"
+  },
+  {
+   "number": 636,
+   "name": "Pratham Khabar 24X7",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Pratham-Khabar-24X7.png"
+  },
+  {
+   "number": 637,
+   "name": "ND24-NEWSDAILY.IN @ FREE",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ND24-min.png"
+  },
+  {
+   "number": 638,
+   "name": "PRAG",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Prag-Logo_basic-300x146.png"
+  },
+  {
+   "number": 639,
+   "name": "Pratidin Time",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/pratidin-time.png"
+  },
+  {
+   "number": 640,
+   "name": "News18 Assam North-East",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_North_East-Asam_WB.png"
+  },
+  {
+   "number": 641,
+   "name": "NEWS LIVE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News_live_LCN-641_logo_264x144.png"
+  },
+  {
+   "number": 642,
+   "name": "NK TV 24x7 @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NK-TV-PLUS-LOGO_264x144.png"
+  },
+  {
+   "number": 643,
+   "name": "DY365",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DY365_264x144.png"
+  },
+  {
+   "number": 644,
+   "name": "Assam Talks",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Assam%20Talks.jpg"
+  },
+  {
+   "number": 645,
+   "name": "North East Live",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/North-East-Live_LCN-645_264x144.png"
+  },
+  {
+   "number": 646,
+   "name": "DA NEWS PLUS @ FREE",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": null
+  },
+  {
+   "number": 647,
+   "name": "DD North East",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-North-East_LCN-647_264x144.png"
+  },
+  {
+   "number": 648,
+   "name": "DD Imphal",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD%20IMPHAL-min.png"
+  },
+  {
+   "number": 649,
+   "name": "DD Arunprabha",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Arunprabha.jpeg"
+  },
+  {
+   "number": 650,
+   "name": "HORNBILL TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/HORNBILL.jpg"
+  },
+  {
+   "number": 653,
+   "name": "Zee Ganga",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Ganga-Final-Logo-Tagline.jpg"
+  },
+  {
+   "number": 655,
+   "name": "DABANGG",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/dabang-tv.png"
+  },
+  {
+   "number": 659,
+   "name": "Zee Bihar Jharkhand",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee%20Bihar%20Jharkhand.png"
+  },
+  {
+   "number": 660,
+   "name": "News18 Bihar Jharkhand",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18-Bihar-JK-WB.png"
+  },
+  {
+   "number": 661,
+   "name": "BHOJPURI CINEMA TV",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Bhojpuri%20Cinema%20TV_LCN_661_.png"
+  },
+  {
+   "number": 662,
+   "name": "B4U Bhojpuri",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/B4U%20Bhojpuri.png"
+  },
+  {
+   "number": 663,
+   "name": "Zee Biskope",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Biskope-Hindi_LOGO_264x144.png"
+  },
+  {
+   "number": 665,
+   "name": "Filamchi",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Filamchi_LCN%20665.jpg"
+  },
+  {
+   "number": 672,
+   "name": "DD BIHAR",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Bihar_LCN-669_264x144.png"
+  },
+  {
+   "number": 679,
+   "name": "Sri Sankara",
+   "quality": "SD",
+   "genre": "Religious",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sri-Sankara.png"
+  },
+  {
+   "number": 686,
+   "name": "CHANNEL WIN",
+   "quality": "SD",
+   "genre": "Devotional",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/channel%20win.jpg"
+  },
+  {
+   "number": 695,
+   "name": "Goodnews TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Goodnews-TV_LCN-695_264x144.png"
+  },
+  {
+   "number": 696,
+   "name": "Grace TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": null
+  },
+  {
+   "number": 703,
+   "name": "ZEE BANGLA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Bangla-min.png"
+  },
+  {
+   "number": 704,
+   "name": "Zee Bangla HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Bangla-HD.jpg"
+  },
+  {
+   "number": 705,
+   "name": "COLORS BANGLA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Bangla_BB.png"
+  },
+  {
+   "number": 706,
+   "name": "Colors Bangla HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/COLORS-BANGLA-hd.png"
+  },
+  {
+   "number": 707,
+   "name": "Star Jalsha",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Bangla_HD_BB.png"
+  },
+  {
+   "number": 708,
+   "name": "STAR JALSHA HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Jalsha-hd.jpg"
+  },
+  {
+   "number": 709,
+   "name": "RUPASHI BANGLA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Rupashi%20Bangla.png"
+  },
+  {
+   "number": 710,
+   "name": "Sony 8",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-AATH.jpg"
+  },
+  {
+   "number": 711,
+   "name": "Sun Bangla",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SUN-BANGLA---1.jpg"
+  },
+  {
+   "number": 712,
+   "name": "AAKASH Aath",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Aaksh-Aath-min.png"
+  },
+  {
+   "number": 714,
+   "name": "CTVN AKD Plus @ Free",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CTVN%20AKD%20Plus_s.jpg"
+  },
+  {
+   "number": 715,
+   "name": "Enterr 10 Bangla",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Enterr10-Bangla-min.png"
+  },
+  {
+   "number": 717,
+   "name": "Zee Bangla Cinema",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee_Bangla_Cinema_Logo_2022.jpg"
+  },
+  {
+   "number": 719,
+   "name": "Jalsha Movies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Jalsha%20Movies.png"
+  },
+  {
+   "number": 720,
+   "name": "JALSHA MOVIES HD",
+   "quality": "HD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jalsha-Movies-hd.jpg"
+  },
+  {
+   "number": 721,
+   "name": "Colors Bangla Cinema",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Bangla_Cinema_BB.png"
+  },
+  {
+   "number": 723,
+   "name": "Zee 24 Ghanta",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee_24_Ghanta.jpg"
+  },
+  {
+   "number": 724,
+   "name": "ABP ANANDA",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABP-Ananda_LCN_724_264x144.png"
+  },
+  {
+   "number": 727,
+   "name": "NEWS TIME BANGLA",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News%20Time%20Bangla.png"
+  },
+  {
+   "number": 728,
+   "name": "Calcutta News @ Free",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Calcutta-News.jpeg"
+  },
+  {
+   "number": 729,
+   "name": "TV9 BANGLA @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Bangla_%28LCN-729%29.png"
+  },
+  {
+   "number": 730,
+   "name": "R. BANGLA @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/R-Bangla-min.png"
+  },
+  {
+   "number": 735,
+   "name": "Dhoom Music",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DHOOM-MUSIC_264x144.png"
+  },
+  {
+   "number": 736,
+   "name": "Sangeet Bangla",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sangeet%20Bangla.jpg"
+  },
+  {
+   "number": 737,
+   "name": "Bangla Talkies",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Bangla-Talkies.png"
+  },
+  {
+   "number": 738,
+   "name": "Star Sports Bangla 1",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": null
+  },
+  {
+   "number": 739,
+   "name": "DD BANGLA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Bangla_LCN-739_264x144.png"
+  },
+  {
+   "number": 740,
+   "name": "DD Tripura",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD%20Tripura.jpg"
+  },
+  {
+   "number": 748,
+   "name": "RAJ Digital Plus",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-Digital-Plus---Tamil.png"
+  },
+  {
+   "number": 750,
+   "name": "Mega TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MEGA-TV_264x144.png"
+  },
+  {
+   "number": 751,
+   "name": "ZEE TAMIZH",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Tamil.jpg"
+  },
+  {
+   "number": 752,
+   "name": "Zee Tamil HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Tamil-HD.png"
+  },
+  {
+   "number": 753,
+   "name": "Puthu Yugam",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PUTHU-YUGAM.png"
+  },
+  {
+   "number": 754,
+   "name": "Sun TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sun%20TV-min.png"
+  },
+  {
+   "number": 755,
+   "name": "SUN HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SunTV-HD.jpg"
+  },
+  {
+   "number": 756,
+   "name": "KTV",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/KTV-min.png"
+  },
+  {
+   "number": 757,
+   "name": "KTV HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/KTV-HD.jpg"
+  },
+  {
+   "number": 758,
+   "name": "STAR VIJAY",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Vijay-min.png"
+  },
+  {
+   "number": 759,
+   "name": "Vijay HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-VIJAY.jpg"
+  },
+  {
+   "number": 760,
+   "name": "KALAINGAR",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalaignar%20logo.png"
+  },
+  {
+   "number": 761,
+   "name": "Tamil Naaptol",
+   "quality": "SD",
+   "genre": "Others",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/naaptol.jpeg"
+  },
+  {
+   "number": 762,
+   "name": "Jaya TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jaya-tv_LCN.png"
+  },
+  {
+   "number": 763,
+   "name": "Colors Tamil",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors-Tamil.png"
+  },
+  {
+   "number": 764,
+   "name": "Colors Tamil HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Tamil_HD_BB.png"
+  },
+  {
+   "number": 765,
+   "name": "Raj TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-TV.png"
+  },
+  {
+   "number": 766,
+   "name": "POLIMER",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Polimer%20TV-min.png"
+  },
+  {
+   "number": 767,
+   "name": "SIRIPPOLI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sirippoli.png"
+  },
+  {
+   "number": 768,
+   "name": "MAKKAL TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Makkal-TV.png"
+  },
+  {
+   "number": 769,
+   "name": "ADITHYA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Adithya.jpg"
+  },
+  {
+   "number": 771,
+   "name": "Vasanth",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vasanth-TV.png"
+  },
+  {
+   "number": 772,
+   "name": "VIJAYSUPER",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Vijay-min.png"
+  },
+  {
+   "number": 773,
+   "name": "Music Zone",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": null
+  },
+  {
+   "number": 774,
+   "name": "Sun Life",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/sun-life.jpg"
+  },
+  {
+   "number": 775,
+   "name": "Zee Thirai",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Tamil.jpg"
+  },
+  {
+   "number": 776,
+   "name": "Vendhar TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vendhar%20TV%20Logo.png"
+  },
+  {
+   "number": 777,
+   "name": "Mega 24",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mega-24.png"
+  },
+  {
+   "number": 780,
+   "name": "J Movies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/J-Movies.jpg"
+  },
+  {
+   "number": 782,
+   "name": "News18 Tamil Nadu",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Tamil_Nadu_WB.png"
+  },
+  {
+   "number": 783,
+   "name": "NEWS 7 TAMIL",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NEWS7-Logo-min.png"
+  },
+  {
+   "number": 784,
+   "name": "Puthiya Thalaimurai",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Puthiya-Thalaimurai.png"
+  },
+  {
+   "number": 785,
+   "name": "Kalaignar Seithigal",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/kalaignar-seithigal.png"
+  },
+  {
+   "number": 787,
+   "name": "Polimer News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Polimer-News.png"
+  },
+  {
+   "number": 788,
+   "name": "Thanti Tv",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Logo_of_Thanthi_TV.png"
+  },
+  {
+   "number": 789,
+   "name": "Sun News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SunNews.jpg"
+  },
+  {
+   "number": 790,
+   "name": "Jaya Plus",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/JAYA-PLUS_LCN-790_264x144.png"
+  },
+  {
+   "number": 791,
+   "name": "News J",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News-J.png"
+  },
+  {
+   "number": 792,
+   "name": "SATHIYAMTV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SATHIYAM-TV_1_264x144.png"
+  },
+  {
+   "number": 794,
+   "name": "Raj News Tamil",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-NEWS-TAMIL.png"
+  },
+  {
+   "number": 795,
+   "name": "News Tamil 24X7",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-NEWS-TAMIL.png"
+  },
+  {
+   "number": 798,
+   "name": "D Tamil",
+   "quality": "SD",
+   "genre": "Infotainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/D_Tamil.png"
+  },
+  {
+   "number": 803,
+   "name": "Star Sports 1 Tamil",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-Tamil.jpg"
+  },
+  {
+   "number": 804,
+   "name": "SONY SPORTS TEN 4 Rs 17",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-4.jpg"
+  },
+  {
+   "number": 805,
+   "name": "ISAIARUVI",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ISAI%20ARUVI%20logo.png"
+  },
+  {
+   "number": 807,
+   "name": "Mega Musiq",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mega-Musiq.png"
+  },
+  {
+   "number": 808,
+   "name": "Kalaignar Murasu",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalaignar%20Murasu.png"
+  },
+  {
+   "number": 809,
+   "name": "Sun Music",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sun%20Music-min.png"
+  },
+  {
+   "number": 810,
+   "name": "Sun Music HD",
+   "quality": "HD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sun%20Music-HD.jpg"
+  },
+  {
+   "number": 811,
+   "name": "JAYA MAX",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jaya-MAx_LCN-811_264x144.png"
+  },
+  {
+   "number": 812,
+   "name": "7S Music",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/7s-Music-logo_160x90.png"
+  },
+  {
+   "number": 813,
+   "name": "Raj Musix Tamil",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-Musix-Tamil_264x144.png"
+  },
+  {
+   "number": 814,
+   "name": "Aaseervatham TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Aaseervatham%20TV.jpg"
+  },
+  {
+   "number": 815,
+   "name": "ANGEL TV",
+   "quality": "SD",
+   "genre": "Devotional",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Angel%20TV-min.png"
+  },
+  {
+   "number": 816,
+   "name": "Madha TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MADHA-TV_264x144.png"
+  },
+  {
+   "number": 817,
+   "name": "Nambikkai TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nambikkai-TV_264x144.png"
+  },
+  {
+   "number": 818,
+   "name": "JOTHI TV",
+   "quality": "SD",
+   "genre": "Religious",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jothi-TV_%28LCN-818%29.jpg"
+  },
+  {
+   "number": 819,
+   "name": "SVBC2 @ FREE",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/svbc-2.png"
+  },
+  {
+   "number": 820,
+   "name": "DD PODHIGAI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD%20Podhigai.jpg"
+  },
+  {
+   "number": 821,
+   "name": "Kalvi",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalvi-TV%20Logo_LCN-821-min.png"
+  },
+  {
+   "number": 822,
+   "name": "VIJAY TAKKAR",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/VIJAY-TAKKAR.jpg"
+  },
+  {
+   "number": 823,
+   "name": "SAI TV",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sai-TV.png"
+  },
+  {
+   "number": 826,
+   "name": "Asianet",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet-min.png"
+  },
+  {
+   "number": 827,
+   "name": "ASIANET HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ASIANET-HD.jpg"
+  },
+  {
+   "number": 828,
+   "name": "Surya TV",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-TV.jpg"
+  },
+  {
+   "number": 829,
+   "name": "Surya HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya%20TV%20HD-min.png"
+  },
+  {
+   "number": 830,
+   "name": "Mazhavil Manorma",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mazhavil%20Manorama-min.png"
+  },
+  {
+   "number": 831,
+   "name": "Mazhavil Manorama HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mazhavil-Manorama-HD-min.png"
+  },
+  {
+   "number": 832,
+   "name": "Zee Keralam",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Keralam.png"
+  },
+  {
+   "number": 833,
+   "name": "Zee Keralam Hd",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-keralam-HD.png"
+  },
+  {
+   "number": 834,
+   "name": "Kairali TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kairali%20TV.png"
+  },
+  {
+   "number": 835,
+   "name": "Asianet Plus",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet%20Plus-min.png"
+  },
+  {
+   "number": 836,
+   "name": "Amrita TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Amrita_TV-min.png"
+  },
+  {
+   "number": 837,
+   "name": "Kairali WE",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kairali%20TV.png"
+  },
+  {
+   "number": 838,
+   "name": "JANAM TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/JAN-TV.png"
+  },
+  {
+   "number": 839,
+   "name": "KAUMUDY TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kaumudy-TV_LCN-839_264x144.png"
+  },
+  {
+   "number": 840,
+   "name": "Flowers TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/FLOWERS-TV_264x144.png"
+  },
+  {
+   "number": 842,
+   "name": "Malayalam Naaptol",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Malayalam-Naaptol_%28LCN-882%29-min.png"
+  },
+  {
+   "number": 843,
+   "name": "Asianet Movies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet-Movies.jpg"
+  },
+  {
+   "number": 845,
+   "name": "Surya Movies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-Movies.jpg"
+  },
+  {
+   "number": 846,
+   "name": "Surya Comedy",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-Comedy.jpg"
+  },
+  {
+   "number": 849,
+   "name": "Jai Hind",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jai-Hindi-TV-min.png"
+  },
+  {
+   "number": 850,
+   "name": "MEDIA ONE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/media-one.jpeg"
+  },
+  {
+   "number": 851,
+   "name": "Manorama News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Manorama%20News-min.png"
+  },
+  {
+   "number": 852,
+   "name": "Asianet News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/WB_Logo_Asianet%20News.png"
+  },
+  {
+   "number": 853,
+   "name": "Mathrubhumi News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mathrubhumi%20News-min.png"
+  },
+  {
+   "number": 854,
+   "name": "KAIRALI NEWS",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kairali%20News.png"
+  },
+  {
+   "number": 855,
+   "name": "News 18 Kerala",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Kerala_WB.png"
+  },
+  {
+   "number": 856,
+   "name": "RAJ NEWS MALAYALAM",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-News-Malayalam_LCN-856_264x144.png"
+  },
+  {
+   "number": 857,
+   "name": "Twenty Four",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Twenty-Four_%28LCN-857%29.png"
+  },
+  {
+   "number": 863,
+   "name": "Surya Music",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-Music-Logo.jpg"
+  },
+  {
+   "number": 864,
+   "name": "Kappa TV",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": null
+  },
+  {
+   "number": 865,
+   "name": "RAJ MUSIX MALAYALAM",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-Musix-Malayalam_LCN-865_264x144.png"
+  },
+  {
+   "number": 866,
+   "name": "Darshana TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Darshana%20TV%20%28Ch%20No%20-%20866%29.png"
+  },
+  {
+   "number": 867,
+   "name": "Kite Victers",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kite%20Victers_%28LCN-867%29-min.jpg"
+  },
+  {
+   "number": 868,
+   "name": "Safari TV",
+   "quality": "SD",
+   "genre": "Infotainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Safari-TV_LCN-868_264x144.png"
+  },
+  {
+   "number": 869,
+   "name": "Shalom",
+   "quality": "SD",
+   "genre": "Devotional",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Shalom-TV_LCN-869_264x144.png"
+  },
+  {
+   "number": 870,
+   "name": "Goodness TV",
+   "quality": "SD",
+   "genre": "Devotional",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/goodness-tv.jpeg"
+  },
+  {
+   "number": 871,
+   "name": "DD Malayalam",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Malayalam_LCN-871_264x144.png"
+  },
+  {
+   "number": 872,
+   "name": "ATE TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ATE-TV_%28LCN-872%29.png"
+  },
+  {
+   "number": 873,
+   "name": "Powervision",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Powervision_LCN-873_264x144.png"
+  },
+  {
+   "number": 877,
+   "name": "Gemini TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini%20TV-min.png"
+  },
+  {
+   "number": 878,
+   "name": "GEMINI TV HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GeminiTV-HD.png"
+  },
+  {
+   "number": 879,
+   "name": "ETV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV.png"
+  },
+  {
+   "number": 880,
+   "name": "ETV HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Etv-HD_LCN-880_264x144.png"
+  },
+  {
+   "number": 881,
+   "name": "Star MAA TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Maa-min.png"
+  },
+  {
+   "number": 882,
+   "name": "Star MAA HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-MAA-TV-hd.jpg"
+  },
+  {
+   "number": 883,
+   "name": "ZEE TELUGU",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Telugu-min.PNG"
+  },
+  {
+   "number": 884,
+   "name": "Zee Telugu HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Telugu_HD.jpg"
+  },
+  {
+   "number": 885,
+   "name": "Gemini comedy",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini-comedy.png"
+  },
+  {
+   "number": 887,
+   "name": "STAR MAA GOLD",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-MAA-GOLD.jpg"
+  },
+  {
+   "number": 889,
+   "name": "ETV PLUS",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Plus_264x144.png"
+  },
+  {
+   "number": 890,
+   "name": "Telugu Naaptol",
+   "quality": "SD",
+   "genre": "Others",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NAAPTOL-Telugu_LCN-890_264x144.png"
+  },
+  {
+   "number": 891,
+   "name": "Vissa TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vissa-TV.jpg"
+  },
+  {
+   "number": 893,
+   "name": "Gemini Life",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vissa-TV.jpg"
+  },
+  {
+   "number": 895,
+   "name": "Gemini Movies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GeminiTV.jpg"
+  },
+  {
+   "number": 896,
+   "name": "Gemini Movies HD",
+   "quality": "HD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini%20Movies-min.png"
+  },
+  {
+   "number": 897,
+   "name": "STAR Maa Moviesa",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Maa%20Movies-min.png"
+  },
+  {
+   "number": 898,
+   "name": "Star Maa Movies HD",
+   "quality": "HD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-Maa-Moviesa-hd.jpg"
+  },
+  {
+   "number": 899,
+   "name": "ETV Cinema",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Cinema_264x144.png"
+  },
+  {
+   "number": 900,
+   "name": "Zee Cinemalu",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Cinemalu.png"
+  },
+  {
+   "number": 901,
+   "name": "Zee Cinemalu HD",
+   "quality": "HD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Cinemalu_02-Telugu-HD.jpg"
+  },
+  {
+   "number": 904,
+   "name": "ETV 2",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV.png"
+  },
+  {
+   "number": 905,
+   "name": "TV9 Telugu",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Telugu.png"
+  },
+  {
+   "number": 906,
+   "name": "NTV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NTV.png"
+  },
+  {
+   "number": 907,
+   "name": "Sakshi TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sakshi-TV_LCN-907_264x144.png"
+  },
+  {
+   "number": 908,
+   "name": "PRIME 9 NEWS",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PRIME-9-NEWS.jpg"
+  },
+  {
+   "number": 909,
+   "name": "ABN Andhra Jyoti",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABN-andhra-jyoti.jpeg"
+  },
+  {
+   "number": 912,
+   "name": "V6 NEWS",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/V6News-min.jpg"
+  },
+  {
+   "number": 914,
+   "name": "T News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/T%20News-min.png"
+  },
+  {
+   "number": 916,
+   "name": "ETV Telangana",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Telangana_264x144.png"
+  },
+  {
+   "number": 917,
+   "name": "VANITHA @ FREE",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vanitha_%28LCN-917%29.png"
+  },
+  {
+   "number": 918,
+   "name": "10 TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/10-TV_264x144.png"
+  },
+  {
+   "number": 920,
+   "name": "Raj News Telugu",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-NEWS-TELUGU_264x144.png"
+  },
+  {
+   "number": 927,
+   "name": "HM TV @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/HMTV_LCN%20927.png"
+  },
+  {
+   "number": 928,
+   "name": "Star Sports 1 Telugu",
+   "quality": "SD",
+   "genre": "Sports",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-telegu.jpg"
+  },
+  {
+   "number": 930,
+   "name": "GEMINI MUSIC",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini%20Music-min.png"
+  },
+  {
+   "number": 931,
+   "name": "Gemini Music HD",
+   "quality": "HD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini-Music-HD.jpg"
+  },
+  {
+   "number": 932,
+   "name": "STAR Maa Music",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-Maa-Music.jpg"
+  },
+  {
+   "number": 935,
+   "name": "Raj Musix Telugu",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj%20Musix-Telugu.png"
+  },
+  {
+   "number": 938,
+   "name": "ETV Life",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV%20Life.png"
+  },
+  {
+   "number": 939,
+   "name": "ETV Abhiruchi",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Abhiruchi.png"
+  },
+  {
+   "number": 940,
+   "name": "SVBC",
+   "quality": "SD",
+   "genre": "Religious",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SVBC.png"
+  },
+  {
+   "number": 941,
+   "name": "SUBHAVARTHA",
+   "quality": "SD",
+   "genre": "Devotional",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SVBC%20TV%20Logo-min.png"
+  },
+  {
+   "number": 942,
+   "name": "Bhakti TV",
+   "quality": "SD",
+   "genre": "Religious",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/bhakti-tv.jpeg"
+  },
+  {
+   "number": 943,
+   "name": "DIVYAVANI TV",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Divyavani-TV_LCn943_264x144.png"
+  },
+  {
+   "number": 945,
+   "name": "ASHIRWAD",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Ashirwad.jpg"
+  },
+  {
+   "number": 946,
+   "name": "DD Yadagiri",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Saptagiri_LCN-947_264x144.png"
+  },
+  {
+   "number": 947,
+   "name": "DD Saptagiri",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Saptagiri_LCN-947_264x144.png"
+  },
+  {
+   "number": 948,
+   "name": "Vidya",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vidya.jpeg"
+  },
+  {
+   "number": 949,
+   "name": "Nipuna",
+   "quality": "SD",
+   "genre": "FTA",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nipuna.png"
+  },
+  {
+   "number": 953,
+   "name": "UDAYA TV",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Udaya%20TV-min.png"
+  },
+  {
+   "number": 954,
+   "name": "Udaya HD",
+   "quality": "HD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/UdayaTV-HD.jpg"
+  },
+  {
+   "number": 955,
+   "name": "COLORS KANNADA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors-Kannada-min.png"
+  },
+  {
+   "number": 956,
+   "name": "Colors Kannada HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Kannada_HD_BB.png"
+  },
+  {
+   "number": 957,
+   "name": "ZEE KANNADA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Kannada.png"
+  },
+  {
+   "number": 958,
+   "name": "Zee Kannada HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ZK%20HD%20Logo.png"
+  },
+  {
+   "number": 959,
+   "name": "STAR SUVARNA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Suvarna.png"
+  },
+  {
+   "number": 960,
+   "name": "STAR SUVARNA HD",
+   "quality": "HD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-SUVARNA-hd.jpg"
+  },
+  {
+   "number": 961,
+   "name": "KASTURI",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kasthuri%20TV_LCN-961.jpg"
+  },
+  {
+   "number": 965,
+   "name": "Colors Super",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Super_WB.png"
+  },
+  {
+   "number": 966,
+   "name": "Kannada Naaptol",
+   "quality": "SD",
+   "genre": "Others",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Naaptol_Kannada.png"
+  },
+  {
+   "number": 967,
+   "name": "SIRIKANNADA ALL TIME @ FREE",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Siri-Kannada_%28LCN-967%29-min.png"
+  },
+  {
+   "number": 968,
+   "name": "Ayush TV",
+   "quality": "SD",
+   "genre": "Lifestyle",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Ayush-tv-logo_264x144.png"
+  },
+  {
+   "number": 969,
+   "name": "STAR Suvarna Plus",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-Suvarna-Plus.png"
+  },
+  {
+   "number": 970,
+   "name": "UDAYA MOVIES",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Udaya-Movies.jpg"
+  },
+  {
+   "number": 972,
+   "name": "Colors Kannada Cinema",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Kannada_Cinema_BB.png"
+  },
+  {
+   "number": 973,
+   "name": "Public Movies",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PublicMovies_%28LCN-973%29.png"
+  },
+  {
+   "number": 974,
+   "name": "Star Sports 1 Kannada",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-Kannadas.jpg"
+  },
+  {
+   "number": 975,
+   "name": "Zee Picchar",
+   "quality": "SD",
+   "genre": "Movies",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Picchar-Channel-Logo.jpeg"
+  },
+  {
+   "number": 976,
+   "name": "TV9 KANNADA",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Kannada.png"
+  },
+  {
+   "number": 978,
+   "name": "News18 Kannada",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Kannada_WB.png"
+  },
+  {
+   "number": 979,
+   "name": "ASIANET SUVARNA NEWS",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet%20Suvarna%20News_%28LCN-979%29.png"
+  },
+  {
+   "number": 980,
+   "name": "Power Tv",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Power-TV-984.png"
+  },
+  {
+   "number": 981,
+   "name": "Public TV",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/public-tv-logo.png"
+  },
+  {
+   "number": 982,
+   "name": "News 1st",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News%201st_%28LCN-982%29.png"
+  },
+  {
+   "number": 983,
+   "name": "Raj News Kannada",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-News-Kannada.png"
+  },
+  {
+   "number": 985,
+   "name": "Dighvijay 24X7 News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Dighvijay-24x7-News.png"
+  },
+  {
+   "number": 986,
+   "name": "TV5 KANNADA @ FREE",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV5-Kannada_%28LCN-986%29.png"
+  },
+  {
+   "number": 987,
+   "name": "Vistara News",
+   "quality": "SD",
+   "genre": "News",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vistara-news-new.png"
+  },
+  {
+   "number": 990,
+   "name": "UDAYA MUSIC",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/UDAYA-music.jpg"
+  },
+  {
+   "number": 991,
+   "name": "Raj Musix Kannada",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-MUSIX-KANNADA.png"
+  },
+  {
+   "number": 995,
+   "name": "DD CHANDANA",
+   "quality": "SD",
+   "genre": "Entertainment",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Chandana.png"
+  },
+  {
+   "number": 996,
+   "name": "PUBLIC MUSIC",
+   "quality": "SD",
+   "genre": "Music",
+   "logo": "https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Public%20Music_%28LCN-996%29.png"
+  }
+ ]
+}

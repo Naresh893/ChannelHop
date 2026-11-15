@@ -1,0 +1,1711 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>Halonix Bulb Control</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --surface: rgba(255, 255, 255, .045);
+    --surface-2: rgba(255, 255, 255, .07);
+    --border: rgba(255, 255, 255, .09);
+    --text: #eef1f6;
+    --muted: #949cad;
+    --faint: #626a7b;
+    --ok: #3ddc97;
+    --warn: #ffc65c;
+    --err: #ff6b6b;
+    --violet: #a78bfa;
+    --radius: 18px;
+    --glow: 255, 183, 94;
+    --glow-a: .7;
+    --bulb: rgb(255, 183, 94);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Inter, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  #ambient {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(60vmax 60vmax at 18% 12%, rgba(var(--glow), calc(var(--glow-a) * .28)), transparent 60%),
+      radial-gradient(50vmax 50vmax at 90% 100%, rgba(var(--glow), calc(var(--glow-a) * .12)), transparent 60%);
+    transition: background .5s ease;
+  }
+
+  /* ---------- start screen ---------- */
+  #start {
+    position: relative; z-index: 1; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 32px 16px; text-align: center; gap: 8px;
+  }
+  #start h1 { font-size: 30px; letter-spacing: -.02em; margin: 18px 0 0; }
+  #start .tag { color: var(--muted); margin: 0 0 22px; }
+  .start-btn {
+    border: 0; border-radius: 999px; padding: 16px 54px; font-size: 18px; font-weight: 650;
+    background: linear-gradient(135deg, #ffcf7a, #ff9a3c); color: #1a1206;
+    box-shadow: 0 10px 40px rgba(255, 160, 60, .35);
+    transition: transform .15s ease, box-shadow .2s ease;
+  }
+  .start-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 50px rgba(255, 160, 60, .45); }
+  .start-btn:active { transform: translateY(1px); }
+  .start-btn[disabled] { opacity: .7; cursor: progress; }
+  #start-msg { max-width: 460px; color: var(--muted); margin-top: 18px; font-size: 14px; }
+  #start-msg code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; color: var(--text); }
+  #start-msg .err { color: var(--err); }
+
+  .bulb-svg { width: 132px; height: auto; overflow: visible; }
+  .bulb-svg .glass { fill: var(--bulb); transition: fill .35s ease; filter: drop-shadow(0 0 calc(10px + 40px * var(--glow-a)) rgba(var(--glow), var(--glow-a))); }
+  .bulb-svg .shine { fill: #fff; opacity: .35; }
+  .bulb-svg .base { fill: #8c93a1; }
+  .bulb-svg .base-dark { fill: #5d6370; }
+  #start .bulb-svg { animation: float 5s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-8px); } }
+
+  /* ---------- app shell ---------- */
+  #app { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 18px 16px 48px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; }
+  .brand .dot { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--bulb) 55%); box-shadow: 0 0 16px rgba(var(--glow), .7); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); font-size: 13px; color: var(--muted); white-space: nowrap;
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .pill.ok i { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .pill.err i { background: var(--err); box-shadow: 0 0 8px var(--err); }
+  .pill.warn i { background: var(--warn); }
+  .pill.demo i { background: var(--violet); box-shadow: 0 0 8px var(--violet); }
+
+  .banner {
+    display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap;
+    background: rgba(255, 107, 107, .1); border: 1px solid rgba(255, 107, 107, .3); color: #ffd0d0;
+    padding: 12px 14px; border-radius: 14px; margin-bottom: 16px; font-size: 14px;
+  }
+  .banner.info { background: rgba(167, 139, 250, .1); border-color: rgba(167, 139, 250, .3); color: #e3dcff; }
+
+  .layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .layout > * { min-width: 0; }  /* let the tab strip scroll instead of widening the page */
+  @media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+
+  /* hero */
+  .hero { padding: 22px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: sticky; top: 16px; }
+  @media (max-width: 860px) { .hero { position: static; } }
+  .hero .bulb-svg { width: 118px; margin-top: 4px; }
+  .hero h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
+  .hero .sub { color: var(--muted); font-size: 13px; margin-top: -10px; text-align: center; }
+  .power {
+    width: 76px; height: 76px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface-2); display: grid; place-items: center; transition: all .25s ease;
+  }
+  .power svg { width: 30px; height: 30px; stroke: var(--muted); transition: stroke .25s; }
+  .power[aria-pressed="true"] { background: rgba(var(--glow), .2); border-color: rgba(var(--glow), .6); box-shadow: 0 0 30px rgba(var(--glow), .35); }
+  .power[aria-pressed="true"] svg { stroke: rgb(var(--glow)); }
+  .power:active { transform: scale(.96); }
+  .hero-row { width: 100%; }
+  .mode-line { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .chip-mini { padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; color: var(--text); }
+
+  /* sliders */
+  .field { width: 100%; }
+  .field-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .field-head b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 34px; background: transparent; margin: 0; cursor: pointer;
+    --track: linear-gradient(90deg, #2a2e37, rgb(var(--glow)));
+  }
+  input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 999px; background: var(--track); border: 1px solid var(--border); }
+  input[type=range]::-moz-range-track { height: 10px; border-radius: 999px; background: var(--track); border: 1px solid var(--border); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 24px; height: 24px; margin-top: -8px; border-radius: 50%;
+    background: #fff; border: 0; box-shadow: 0 2px 10px rgba(0,0,0,.5), 0 0 0 4px rgba(255,255,255,.12);
+  }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
+  input[type=range]:focus-visible { outline: none; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(var(--glow), .6); }
+  input.warmth { --track: linear-gradient(90deg, #ffa24f, #ffd9a8 40%, #fff6ec 60%, #cfe0ff); }
+  input.plain { --track: linear-gradient(90deg, #2a2e37, #9aa3b5); }
+
+  /* tabs */
+  .panel { padding: 8px; min-height: 520px; }
+  .tabs { display: flex; gap: 4px; padding: 4px; overflow-x: auto; scrollbar-width: none; background: rgba(0,0,0,.2); border-radius: 14px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); padding: 10px 14px; border-radius: 10px;
+    font-size: 14px; font-weight: 550; display: inline-flex; gap: 7px; align-items: center; justify-content: center; white-space: nowrap;
+  }
+  .tab svg { width: 17px; height: 17px; stroke: currentColor; }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+  .tab-body { padding: 18px 14px 14px; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 22px 0 10px; font-weight: 650; }
+  .section-title:first-child { margin-top: 0; }
+  .note { color: var(--muted); font-size: 13px; }
+  .note a { color: #ffcf7a; }
+
+  /* colour */
+  .wheel-wrap { position: relative; width: min(300px, 78vw); aspect-ratio: 1; margin: 6px auto 4px; touch-action: none; }
+  .wheel-wrap canvas { width: 100%; height: 100%; border-radius: 50%; display: block; box-shadow: 0 0 0 1px var(--border), 0 20px 60px rgba(0,0,0,.4); cursor: crosshair; }
+  .wheel-handle {
+    position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+    border: 3px solid #fff; box-shadow: 0 2px 12px rgba(0,0,0,.6); pointer-events: none; left: 50%; top: 50%;
+  }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 18px; }
+  .swatch { width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,.12); transition: transform .12s; }
+  .swatch:hover { transform: scale(1.1); }
+  .colour-readout { text-align: center; color: var(--muted); font-size: 13px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+  /* grid tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .tile {
+    position: relative; border: 1px solid var(--border); border-radius: 14px; padding: 14px; min-height: 84px; text-align: left;
+    display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; color: #fff;
+    transition: transform .15s ease, box-shadow .2s ease;
+  }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .tile b { font-size: 15px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+  .tile small { opacity: .85; font-size: 12px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+  .tile.active { box-shadow: 0 0 0 2px #fff, 0 10px 30px rgba(0,0,0,.35); }
+  .tile.fx { background-size: 300% 300%; animation: fx 6s ease infinite; }
+  @keyframes fx { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+  .white-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .white-presets .tile { min-height: 70px; color: #1d1a14; }
+  .white-presets .tile b, .white-presets .tile small { text-shadow: none; }
+
+  /* buttons */
+  .btn {
+    border: 1px solid var(--border); background: var(--surface-2); padding: 9px 14px; border-radius: 11px; font-weight: 550; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 8px; transition: background .15s;
+  }
+  .btn:hover { background: rgba(255,255,255,.11); }
+  .btn.primary { background: linear-gradient(135deg, #ffcf7a, #ff9a3c); color: #1a1206; border-color: transparent; }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .btn.danger { color: #ffb4b4; }
+  .btn.small { padding: 6px 10px; font-size: 13px; border-radius: 9px; }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .seg { display: inline-flex; background: rgba(0,0,0,.25); padding: 3px; border-radius: 11px; border: 1px solid var(--border); flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 13px; border-radius: 8px; font-size: 14px; font-weight: 550; }
+  .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+
+  /* music */
+  .music-stage { position: relative; border-radius: 16px; overflow: hidden; background: rgba(0,0,0,.3); border: 1px solid var(--border); }
+  .music-stage canvas { width: 100%; height: 190px; display: block; }
+  .music-orb {
+    position: absolute; left: 50%; top: 50%; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, var(--bulb) 55%); box-shadow: 0 0 50px rgba(var(--glow), .7);
+    transition: transform .08s ease-out; pointer-events: none;
+  }
+  .music-stats { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .music-stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .big-toggle { width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; margin: 14px 0 4px; }
+  .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 22px; margin-top: 8px; }
+
+  /* schedule */
+  .timer-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 14px; background: rgba(0,0,0,.2); border: 1px solid var(--border); }
+  .timer-left { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 650; }
+  .sched-list { display: flex; flex-direction: column; gap: 10px; }
+  .sched {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 14px;
+    border-radius: 14px; background: rgba(0,0,0,.2); border: 1px solid var(--border);
+  }
+  .sched.off { opacity: .55; }
+  .sched-time { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .sched-time small { display: block; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-top: 6px; }
+  .sched-time small.on { color: var(--ok); } .sched-time small.off { color: var(--muted); }
+  .sched-info { min-width: 0; font-size: 13px; color: var(--muted); }
+  .sched-info b { color: var(--text); font-size: 14px; display: block; margin-bottom: 2px; }
+  .sched-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  @media (max-width: 520px) { .sched { grid-template-columns: auto 1fr; } .sched-actions { grid-column: 1 / -1; justify-content: flex-start; } }
+  .light-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(255,255,255,.3); }
+  .switch { position: relative; width: 44px; height: 26px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch span { position: absolute; inset: 0; border-radius: 999px; background: #3a3f4a; transition: .2s; cursor: pointer; }
+  .switch span::after { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: .2s; }
+  .switch input:checked + span { background: var(--ok); }
+  .switch input:checked + span::after { transform: translateX(18px); }
+  .switch input:focus-visible + span { box-shadow: 0 0 0 3px rgba(61,220,151,.4); }
+
+  .form { padding: 16px; border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--border); display: grid; gap: 16px; }
+  .form label.lbl { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+  input.text, select.text {
+    width: 100%; background: rgba(0,0,0,.3); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; outline: none;
+  }
+  input.text:focus, select.text:focus { border-color: rgba(var(--glow), .7); }
+  input[type=time].text { font-size: 18px; font-variant-numeric: tabular-nums; }
+  input[type=color] { width: 48px; height: 40px; border: 1px solid var(--border); border-radius: 10px; background: transparent; padding: 2px; cursor: pointer; }
+  .days { display: flex; gap: 6px; flex-wrap: wrap; }
+  .day { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .day[aria-pressed="true"] { background: rgba(var(--glow), .25); border-color: rgba(var(--glow), .7); color: var(--text); }
+  .linkish { background: none; border: 0; color: #ffcf7a; font-size: 13px; padding: 0; }
+  .empty { text-align: center; padding: 28px 12px; color: var(--muted); border: 1px dashed var(--border); border-radius: 14px; }
+
+  /* setup */
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  details.guide { border: 1px solid var(--border); border-radius: 14px; padding: 4px 14px; background: rgba(0,0,0,.18); }
+  details.guide summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
+  details.guide ol { padding-left: 20px; margin: 4px 0 14px; color: #c9cfdb; font-size: 14px; }
+  details.guide li { margin-bottom: 8px; }
+  details.guide code, .note code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
+  .dev-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .dev { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,.22); border: 1px solid var(--border); font-size: 13px; }
+  .dev b { font-size: 14px; } .dev .meta { color: var(--muted); overflow-wrap: anywhere; }
+  .badge { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: rgba(61,220,151,.15); color: var(--ok); margin-left: 6px; }
+  .inline-msg { font-size: 13px; margin-top: 10px; min-height: 1em; }
+  .inline-msg.err { color: var(--err); } .inline-msg.ok { color: var(--ok); }
+  .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; animation: spin .8s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: center; width: min(92vw, 460px); pointer-events: none; }
+  .toast { background: rgba(20, 23, 30, .96); border: 1px solid var(--border); padding: 11px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.5); animation: tin .2s ease; }
+  .toast.error { border-color: rgba(255,107,107,.5); color: #ffd0d0; }
+  .toast.ok { border-color: rgba(61,220,151,.4); }
+  @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #start .bulb-svg, .tile.fx { animation: none; }
+  }
+
+  .tile.busy { opacity: .55; pointer-events: none; }
+  .tile.busy::after { content: ""; position: absolute; top: 10px; right: 10px; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .8s linear infinite; }
+  .usage { margin-top: 8px; font-size: 12px; color: var(--faint); }
+  pre.debug { max-height: 260px; overflow: auto; font-size: 11px; line-height: 1.4; background: rgba(0,0,0,.35);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px; white-space: pre-wrap; word-break: break-all; margin-top: 10px; }
+
+  /* phones: compact header card, tabs that stay in reach, two tiles per row */
+  @media (max-width: 640px) {
+    #app { padding: 10px 12px 32px; }
+    header.top { margin-bottom: 10px; }
+    .banner { margin-bottom: 10px; }
+    .layout { gap: 10px; }
+    .hero {
+      display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 2px 12px; padding: 14px;
+      grid-template-areas: "bulb name power" "bulb sub power" "mode mode mode" "bri bri bri";
+    }
+    .hero .bulb-slot { grid-area: bulb; }
+    .hero .bulb-svg { width: 52px; margin: 0; }
+    .hero h2 { grid-area: name; font-size: 17px; align-self: end; }
+    .hero .sub { grid-area: sub; margin: 0; text-align: left; align-self: start; }
+    .hero .power { grid-area: power; width: 56px; height: 56px; }
+    .hero .power svg { width: 24px; height: 24px; }
+    .hero .mode-line { grid-area: mode; justify-content: flex-start; margin-top: 8px; }
+    .hero .hero-row { grid-area: bri; margin-top: 4px; }
+    .panel { min-height: 0; padding: 6px; }
+    .tabs { position: sticky; top: 0; z-index: 5; background: rgba(13, 15, 21, .92); }
+    .tab { padding: 9px 11px; font-size: 13px; gap: 5px; }
+    .tab svg { width: 15px; height: 15px; }
+    .tab-body { padding: 14px 6px 8px; }
+    .wheel-wrap { width: min(250px, 70vw); }
+    .swatches { gap: 8px; }
+    .swatch { width: 34px; height: 34px; }
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .tile { min-height: 70px; padding: 11px; }
+    .white-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .controls-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .music-stage canvas { height: 140px; }
+    .timer-box { flex-direction: column; align-items: flex-start; }
+    .sched { padding: 12px; gap: 10px; }
+    .sched-time { font-size: 22px; }
+    #toast { bottom: 14px; }
+  }
+
+  /* sign-in form on the start screen */
+  .start-form { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(320px, 100%); }
+  .start-form .pw { text-align: center; font-size: 16px; padding: 12px 14px; }
+
+  /* ================= motion & feel ================= */
+  :root { --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.4, .64, 1); }
+  html { scroll-behavior: smooth; }
+  body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  button { touch-action: manipulation; }
+
+  /* ambient light drifts slowly and follows the bulb colour */
+  #ambient { transition: background 1.2s var(--ease); }
+  #ambient::before {
+    content: ""; position: absolute; inset: -20%;
+    background: radial-gradient(45vmax 45vmax at 70% 30%, rgba(var(--glow), calc(var(--glow-a) * .1)), transparent 60%);
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  @keyframes drift { from { transform: translate(-4%, -3%) scale(1); } to { transform: translate(5%, 4%) scale(1.08); } }
+
+  /* start screen leaves, app arrives */
+  #start { transition: opacity .32s var(--ease), transform .32s var(--ease); }
+  #start.leaving { opacity: 0; transform: scale(.96) translateY(-6px); pointer-events: none; }
+  #app { animation: appIn .5s var(--ease) both; }
+  @keyframes appIn { from { opacity: 0; } }
+  .hero, .tab-body, header.top { animation: cardIn .6s var(--ease) both; }
+  .tab-body { animation-delay: .08s; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(18px); } }
+
+  /* bulb and glow ease between colours instead of snapping */
+  .bulb-svg .glass { transition: fill .6s var(--ease), filter .6s var(--ease); }
+  .brand .dot { transition: background .6s var(--ease), box-shadow .6s var(--ease); }
+  .music-orb { transition: transform .12s var(--ease), background .4s var(--ease), box-shadow .4s var(--ease); }
+  .power { transition: background .4s var(--ease), border-color .4s var(--ease), box-shadow .5s var(--ease), transform .25s var(--spring); position: relative; }
+  .power:active { transform: scale(.92); }
+  .power::after {
+    content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(var(--glow), .55);
+    opacity: 0; transform: scale(.8); pointer-events: none;
+  }
+  .power[aria-pressed="true"]::after { animation: ring 2.4s var(--ease) infinite; }
+  @keyframes ring { 0% { opacity: .7; transform: scale(.85); } 70%, 100% { opacity: 0; transform: scale(1.25); } }
+  .chip-mini { animation: chipIn .3s var(--spring) both; }
+  @keyframes chipIn { from { opacity: 0; transform: translateY(4px) scale(.9); } }
+
+  /* tabs: a pill that glides to the selected tab, panes that fade in */
+  .tabs { position: relative; }
+  .tab { position: relative; z-index: 1; transition: color .25s var(--ease), transform .2s var(--spring); }
+  .tab:active { transform: scale(.95); }
+  .tab[aria-selected="true"] { background: transparent; box-shadow: none; }
+  .tab-ink {
+    position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 10px; z-index: 0;
+    background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border), 0 4px 14px rgba(0,0,0,.25);
+    transition: left .35s var(--spring), width .35s var(--spring); pointer-events: none;
+  }
+  .tabs.no-ink .tab-ink { display: none; }
+  .tabs.no-ink .tab[aria-selected="true"] { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
+  [data-pane] { animation: paneIn .32s var(--ease) both; }
+  @keyframes paneIn { from { opacity: 0; transform: translateY(10px); } }
+
+  /* controls: soft press, springy release */
+  .tile, .swatch, .btn, .seg button, .day, .white-presets .tile {
+    transition: transform .28s var(--spring), box-shadow .3s var(--ease), background .25s var(--ease), color .25s var(--ease), opacity .25s var(--ease), filter .25s var(--ease);
+  }
+  .tile:active, .swatch:active, .day:active { transform: scale(.94); }
+  .btn:active { transform: scale(.97); }
+  .tile.active { box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgba(var(--glow), .35), 0 10px 30px rgba(0,0,0,.35); }
+  .swatch { box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+  .swatch:hover { transform: scale(1.12); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+  .seg button { transition: background .25s var(--ease), color .25s var(--ease), box-shadow .25s var(--ease); }
+
+  /* sliders: thumb grows while you drag, track glows with the colour */
+  input[type=range]::-webkit-slider-runnable-track { transition: box-shadow .4s var(--ease), background .4s var(--ease); }
+  input[type=range]::-webkit-slider-thumb { transition: transform .25s var(--spring), box-shadow .25s var(--ease); }
+  input[type=range]:active::-webkit-slider-thumb, input[type=range]:focus-visible::-webkit-slider-thumb { transform: scale(1.25); box-shadow: 0 4px 16px rgba(0,0,0,.5), 0 0 0 8px rgba(255,255,255,.1); }
+  input[type=range]:not(.plain):not(.warmth):active::-webkit-slider-runnable-track { box-shadow: 0 0 18px rgba(var(--glow), .45); }
+  input[type=range]::-moz-range-thumb { transition: transform .25s var(--spring); }
+  input[type=range]:active::-moz-range-thumb { transform: scale(1.25); }
+
+  /* colour wheel: glassy highlight, handle that pops while dragging */
+  .wheel-wrap::after {
+    content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.22), transparent 45%), radial-gradient(circle at 50% 50%, transparent 60%, rgba(0,0,0,.18));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .wheel-wrap canvas { transition: transform .35s var(--spring), box-shadow .35s var(--ease); }
+  .wheel-wrap.dragging canvas { transform: scale(1.015); box-shadow: 0 0 0 1px var(--border), 0 24px 70px rgba(var(--glow), .25); }
+  .wheel-handle { transition: transform .25s var(--spring), background .15s var(--ease); z-index: 1; }
+  .wheel-wrap.dragging .wheel-handle { transform: scale(1.25); }
+
+  /* toasts: spring in, fade out; schedules slide in */
+  .toast { animation: tin .35s var(--spring); transition: opacity .25s var(--ease), transform .25s var(--ease); }
+  .toast.out { opacity: 0; transform: translateY(6px) scale(.97); }
+  @keyframes tin { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+  .sched { animation: paneIn .35s var(--ease) both; transition: opacity .3s var(--ease), transform .3s var(--ease); }
+  .sched:nth-child(2) { animation-delay: .05s; } .sched:nth-child(3) { animation-delay: .1s; } .sched:nth-child(n+4) { animation-delay: .15s; }
+  .switch span { transition: background .3s var(--ease); }
+  .switch span::after { transition: transform .3s var(--spring); }
+  .banner { animation: paneIn .35s var(--ease) both; }
+
+  /* phones: a bottom tab bar within thumb reach */
+  @media (max-width: 640px) {
+    #app { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+    .tabs {
+      position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); top: auto; z-index: 30;
+      border-radius: 22px; padding: 6px; gap: 2px; overflow: visible;
+      background: rgba(16, 18, 26, .86); backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,.1); box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    }
+    .tab { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 3px; padding: 8px 2px; font-size: 10.5px; font-weight: 600; border-radius: 16px; }
+    .tab svg { width: 21px; height: 21px; }
+    .tab-ink { top: 6px; bottom: 6px; border-radius: 16px; background: rgba(var(--glow), .18); box-shadow: inset 0 0 0 1px rgba(var(--glow), .35); }
+    .tab[aria-selected="true"] { color: #fff; }
+    .tab-body { padding: 12px 6px 4px; }
+    .card { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    #toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
+    .hero .bulb-svg .glass { filter: drop-shadow(0 0 calc(6px + 18px * var(--glow-a)) rgba(var(--glow), var(--glow-a))); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+    #ambient::before { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div id="ambient"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-power" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 7.2a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-colour" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3"/><circle cx="12" cy="7.5" r="1.3"/><circle cx="15.5" cy="10" r="1.3"/><path d="M12 21a2.5 2.5 0 0 1 0-5h1.5a3 3 0 0 0 3-3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+</svg>
+
+<template id="bulb-tpl">
+  <svg class="bulb-svg" viewBox="0 0 120 176" aria-hidden="true">
+    <path class="glass" d="M60 6C29 6 8 29 8 58c0 22 13 36 25 50 6 7 7 13 7 20h40c0-7 1-13 7-20 12-14 25-28 25-50C112 29 91 6 60 6z"/>
+    <ellipse class="shine" cx="40" cy="38" rx="11" ry="17" transform="rotate(-28 40 38)"/>
+    <rect class="base" x="38" y="131" width="44" height="9" rx="4"/>
+    <rect class="base-dark" x="40" y="141" width="40" height="8" rx="4"/>
+    <rect class="base" x="40" y="150" width="40" height="8" rx="4"/>
+    <path class="base-dark" d="M47 159h26l-6 11a8 8 0 0 1-14 0z"/>
+  </svg>
+</template>
+
+<!-- ================= START ================= -->
+<section id="start">
+  <div class="bulb-slot"></div>
+  <h1>Halonix Smart Bulb</h1>
+  <p class="tag">Control your bulb from anywhere</p>
+  <form id="start-form" class="start-form">
+    <input class="text pw" type="password" id="pw" placeholder="Password" autocomplete="current-password" aria-label="Password" hidden>
+    <button class="start-btn" id="start-btn" type="submit">Start</button>
+  </form>
+  <div id="start-msg" role="status" aria-live="polite"></div>
+</section>
+
+<!-- ================= APP ================= -->
+<main id="app" hidden>
+  <header class="top">
+    <div class="brand"><span class="dot"></span><span>Bulb Control</span></div>
+    <span class="pill" id="status-pill"><i></i><span>Connecting…</span></span>
+  </header>
+
+  <div class="banner" id="err-banner" hidden>
+    <span id="err-text"></span>
+    <button class="btn small" id="retry-btn">Retry</button>
+  </div>
+
+  <div class="layout">
+    <aside class="card hero">
+      <div class="bulb-slot"></div>
+      <h2 id="bulb-name">Halonix bulb</h2>
+      <div class="sub" id="bulb-sub">7W RGB</div>
+      <button class="power" id="power-btn" aria-pressed="false" aria-label="Turn bulb on or off">
+        <svg><use href="#i-power"/></svg>
+      </button>
+      <div class="mode-line" id="mode-line"></div>
+      <div class="field hero-row">
+        <div class="field-head"><span>Brightness</span><b id="bri-val">80%</b></div>
+        <input type="range" id="bri" min="1" max="100" value="80" aria-label="Brightness">
+      </div>
+    </aside>
+
+    <section class="card panel">
+      <nav class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="colour" aria-selected="true"><svg><use href="#i-colour"/></svg>Colour</button>
+        <button class="tab" role="tab" data-tab="white"><svg><use href="#i-sun"/></svg>White</button>
+        <button class="tab" role="tab" data-tab="scenes"><svg><use href="#i-spark"/></svg>Scenes</button>
+        <button class="tab" role="tab" data-tab="music"><svg><use href="#i-music"/></svg>Music</button>
+        <button class="tab" role="tab" data-tab="schedule"><svg><use href="#i-clock"/></svg>Schedule</button>
+        <button class="tab" role="tab" data-tab="settings"><svg><use href="#i-gear"/></svg>Settings</button>
+      </nav>
+
+      <div class="tab-body">
+        <!-- COLOUR -->
+        <div data-pane="colour">
+          <div class="note" id="no-colour" hidden>This bulb doesn't report colour support.</div>
+          <div class="wheel-wrap" id="wheel-wrap">
+            <canvas id="wheel" aria-label="Colour wheel"></canvas>
+            <div class="wheel-handle" id="wheel-handle"></div>
+          </div>
+          <div class="colour-readout" id="colour-readout"></div>
+          <div class="swatches" id="swatches"></div>
+        </div>
+
+        <!-- WHITE -->
+        <div data-pane="white" hidden>
+          <div class="field">
+            <div class="field-head"><span>Warmth</span><b id="temp-val">Warm</b></div>
+            <input type="range" class="warmth" id="temp" min="0" max="100" value="30" aria-label="Colour temperature">
+            <div class="row" style="justify-content:space-between;font-size:12px;color:var(--faint);margin-top:2px"><span>Warm 2700K</span><span>Cool 6500K</span></div>
+          </div>
+          <div class="note" id="no-temp" hidden style="margin-top:8px">This bulb has a fixed white tone; only brightness can change.</div>
+          <div class="section-title">Quick whites</div>
+          <div class="white-presets" id="white-presets"></div>
+        </div>
+
+        <!-- SCENES -->
+        <div data-pane="scenes" hidden>
+          <div class="section-title">Moods</div>
+          <div class="tiles" id="preset-tiles"></div>
+          <div id="fx-box">
+            <div class="section-title">Animated effects</div>
+            <div class="tiles" id="effect-tiles"></div>
+            <div class="controls-grid" style="margin-top:16px">
+              <div class="field">
+                <div class="field-head"><span>Effect speed</span><b id="speed-val">50</b></div>
+                <input type="range" class="plain" id="fx-speed" min="0" max="100" value="50" aria-label="Effect speed">
+              </div>
+              <div class="row" style="align-items:flex-end"><button class="btn" id="fx-stop" disabled>Stop effect</button></div>
+            </div>
+            <p class="note">If your bulb can run an effect by itself, it keeps going after you close this page. If not, this page animates it with a colour change every 2 seconds: keep the page open, and it stops after 10 minutes.</p>
+          </div>
+          <p class="note" id="no-fx" hidden>Your bulb doesn't support built-in animated effects.</p>
+        </div>
+
+        <!-- MUSIC -->
+        <div data-pane="music" hidden>
+          <div class="music-stage">
+            <canvas id="viz"></canvas>
+            <div class="music-orb" id="music-orb"></div>
+          </div>
+          <button class="btn primary big-toggle" id="music-btn"><svg width="18" height="18" stroke="currentColor"><use href="#i-music"/></svg><span>Start music sync</span></button>
+          <div class="music-stats">
+            <span>Beat <b id="beat-dot">-</b></span>
+            <span>Level <b id="level-val">0%</b></span>
+            <span>Bulb updates <b id="ups-val">0/s</b></span>
+            <span><b id="music-left"></b></span>
+          </div>
+          <div class="controls-grid">
+            <div>
+              <div class="field-head"><span>Listen to</span></div>
+              <div class="seg" id="src-seg">
+                <button data-v="mic" aria-pressed="true">Microphone</button>
+                <button data-v="tab" aria-pressed="false">Browser tab audio</button>
+              </div>
+            </div>
+            <div>
+              <div class="field-head"><span>Style</span></div>
+              <div class="seg" id="style-seg">
+                <button data-v="flow" aria-pressed="true">Flow</button>
+                <button data-v="beat" aria-pressed="false">Beat</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-head"><span>Beat sensitivity</span><b id="sens-val">60</b></div>
+              <input type="range" class="plain" id="sens" min="0" max="100" value="60" aria-label="Beat sensitivity">
+            </div>
+            <div class="field">
+              <div class="field-head"><span>Max brightness</span><b id="maxb-val">100%</b></div>
+              <input type="range" id="maxb" min="10" max="100" value="100" aria-label="Maximum brightness">
+            </div>
+            <div class="field">
+              <div class="field-head"><span>Stop automatically after</span></div>
+              <select class="text" id="music-limit" aria-label="Stop music sync automatically after">
+                <option value="5">5 minutes</option>
+                <option value="10" selected>10 minutes</option>
+                <option value="20">20 minutes</option>
+                <option value="30">30 minutes</option>
+              </select>
+            </div>
+          </div>
+          <p class="note" style="margin-top:16px">
+            Through the internet the bulb changes at most once a second, a little behind the music, so
+            <b>Flow</b> (smooth colour drift that follows the loudness) usually looks best.
+            Each change is one Tuya API call, and the free Tuya plan has a monthly limit, so music sync
+            only sends real changes and stops by itself. For instant beat-matching, use the <b>Music</b> tab in Smart Life.
+            <b>Browser tab audio</b> needs Chrome or Edge on a computer.
+          </p>
+          <p class="usage" id="usage-line"></p>
+        </div>
+
+        <!-- SCHEDULE -->
+        <div data-pane="schedule" hidden>
+          <div id="timer-section">
+            <div class="section-title">Sleep timer</div>
+            <div class="timer-box">
+              <div>
+                <div class="timer-left" id="timer-left">Off</div>
+                <div class="note" id="timer-note">Turn the bulb off after a while.</div>
+              </div>
+              <div class="row" id="timer-btns">
+                <button class="btn small" data-min="15">15 min</button>
+                <button class="btn small" data-min="30">30 min</button>
+                <button class="btn small" data-min="60">1 hour</button>
+                <button class="btn small" data-min="120">2 hours</button>
+                <button class="btn small danger" data-min="0" id="timer-cancel" hidden>Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Schedules</span>
+            <button class="btn small" id="add-sched">+ Add schedule</button>
+          </div>
+
+          <form class="form" id="sched-form" hidden>
+            <div class="form-grid">
+              <div>
+                <label class="lbl" for="f-time">Time</label>
+                <input class="text" type="time" id="f-time" value="07:00" required>
+              </div>
+              <div>
+                <label class="lbl">Action</label>
+                <div class="seg" id="f-action">
+                  <button type="button" data-v="on" aria-pressed="true">Turn on</button>
+                  <button type="button" data-v="off" aria-pressed="false">Turn off</button>
+                </div>
+              </div>
+              <div id="f-fade-box">
+                <label class="lbl" for="f-fade">Fade in</label>
+                <select class="text" id="f-fade">
+                  <option value="0">Instant</option>
+                  <option value="2">Over 2 min</option>
+                  <option value="5">Over 5 min</option>
+                  <option value="10">Over 10 min</option>
+                  <option value="15">Over 15 min</option>
+                  <option value="30">Over 30 min</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl" for="f-name">Label (optional)</label>
+                <input class="text" id="f-name" maxlength="40" placeholder="Wake up">
+              </div>
+            </div>
+
+            <div id="f-light-box">
+              <label class="lbl">Light when it turns on</label>
+              <div class="seg" id="f-light">
+                <button type="button" data-v="last" aria-pressed="true">Last setting</button>
+                <button type="button" data-v="white" aria-pressed="false">White</button>
+                <button type="button" data-v="colour" aria-pressed="false">Colour</button>
+              </div>
+              <div class="form-grid" id="f-light-opts" style="margin-top:12px" hidden>
+                <div class="field">
+                  <div class="field-head"><span>Brightness</span><b id="f-bri-val">100%</b></div>
+                  <input type="range" id="f-bri" min="1" max="100" value="100" aria-label="Schedule brightness">
+                </div>
+                <div class="field" id="f-temp-box">
+                  <div class="field-head"><span>Warmth</span><b id="f-temp-val">Warm</b></div>
+                  <input type="range" class="warmth" id="f-temp" min="0" max="100" value="20" aria-label="Schedule warmth">
+                </div>
+                <div id="f-colour-box" hidden>
+                  <label class="lbl" for="f-colour">Colour</label>
+                  <input type="color" id="f-colour" value="#ff7a1a">
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="lbl">Repeat</label>
+              <div class="days" id="f-days"></div>
+              <div class="row" style="margin-top:8px;gap:14px">
+                <button type="button" class="linkish" data-days="0,1,2,3,4,5,6">Every day</button>
+                <button type="button" class="linkish" data-days="0,1,2,3,4">Weekdays</button>
+                <button type="button" class="linkish" data-days="5,6">Weekends</button>
+                <button type="button" class="linkish" data-days="">Just once</button>
+              </div>
+            </div>
+
+            <div class="row">
+              <button class="btn primary" type="submit" id="f-save">Save schedule</button>
+              <button class="btn" type="button" id="f-cancel">Cancel</button>
+            </div>
+          </form>
+
+          <div class="sched-list" id="sched-list" style="margin-top:12px"></div>
+          <p class="note" style="margin-top:14px">Schedules are saved in Tuya's cloud, so they run even when this page is closed. Smart Life's own schedules are left alone and don't show here.</p>
+        </div>
+
+        <!-- SETTINGS -->
+        <div data-pane="settings" hidden>
+          <div class="section-title">Your bulb</div>
+          <div id="dev-info"></div>
+
+          <div class="section-title">Devices in your Tuya project</div>
+          <button class="btn" id="dev-list-btn">Show devices</button>
+          <div class="dev-list" id="dev-list"></div>
+          <p class="note" style="margin-top:10px">To control a different device, put its ID in the <code>DEVICE_ID</code> environment variable of your Lambda.</p>
+
+          <div id="account-box" hidden>
+            <div class="section-title">This device</div>
+            <button class="btn danger" id="signout-btn">Sign out</button>
+            <p class="note" style="margin-top:10px">Changing <code>APP_PASSWORD</code> in the Lambda settings signs out every phone and computer.</p>
+          </div>
+
+          <div class="section-title">Troubleshooting</div>
+          <button class="btn" id="debug-btn">Copy bulb details</button>
+          <p class="note" style="margin-top:10px">Copies what your bulb supports and its current settings (no passwords or keys), to paste to whoever is helping you.</p>
+          <pre class="debug" id="debug-out" hidden></pre>
+
+          <div class="section-title">Good to know</div>
+          <p class="note">This page talks to your bulb through Tuya's cloud using your Tuya project. If the page ever says the Tuya trial expired, open platform.tuya.com → Cloud → your project and extend the trial (free).</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="toast" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+    set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (_) {} },
+  };
+  const TOKEN_KEY = 'halonix-cloud-token';
+
+  let token = store.get(TOKEN_KEY);
+  let S = null;              // last snapshot from the Lambda
+  let dragging = null;       // control currently being dragged
+  let currentTab = 'colour';
+  let lastStatic = null;     // last plain colour/white setting (to come back to after effects/music)
+  let effectName = null;
+  let lastCommandAt = 0;
+  let pollStarted = false;
+  let needPassword = false;  // the Lambda only asks for one when APP_PASSWORD is set
+
+  // ---------------------------------------------------------- colour maths
+  function hsv2rgb(h, s, v) {
+    h = ((h % 360) + 360) % 360 / 60; const i = Math.floor(h), f = h - i;
+    const p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f));
+    const [r, g, b] = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+  function rgb2hsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let h = 0;
+    if (d) {
+      if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    return [Math.round(h), Math.round(max ? d / max * 100 : 0), Math.round(max * 100)];
+  }
+  function hex2rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function rgb2hex(r, g, b) { return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  function whiteRGB(t) {
+    const stops = [[255, 165, 80], [255, 214, 170], [255, 244, 232], [214, 228, 255]];
+    const x = clamp(t, 0, 100) / 100 * (stops.length - 1), i = Math.min(Math.floor(x), stops.length - 2), f = x - i;
+    return stops[i].map((c, k) => Math.round(c + (stops[i + 1][k] - c) * f));
+  }
+  function warmthLabel(t) { return t < 15 ? 'Warm' : t < 40 ? 'Soft' : t < 60 ? 'Neutral' : t < 85 ? 'Cool' : 'Daylight'; }
+  function kelvin(t) { return Math.round((2700 + clamp(t, 0, 100) / 100 * 3800) / 100) * 100; }
+  function lightRGB(l) { return l.mode === 'colour' ? hsv2rgb(l.h, l.s / 100, 1) : whiteRGB(l.temp ?? 30); }
+  function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ---------------------------------------------------------- preview / glow
+  const root = document.documentElement;
+  const EFFECT_GLOW = { rainbow: [255, 90, 200], breathe: null, candle: [255, 150, 60], party: [180, 60, 255], ocean: [40, 150, 255], aurora: [60, 255, 170] };
+  function setGlow(rgb, intensity) {
+    const dark = [42, 46, 54], k = 0.3 + 0.7 * intensity;
+    const mix = rgb.map((c, i) => Math.round(dark[i] + (c - dark[i]) * k));
+    root.style.setProperty('--glow', rgb.join(','));
+    root.style.setProperty('--glow-a', (0.12 + 0.88 * intensity).toFixed(3));
+    root.style.setProperty('--bulb', `rgb(${mix.join(',')})`);
+  }
+  function previewState(st) {
+    if (!st || !st.on) { setGlow([70, 74, 84], 0); root.style.setProperty('--bulb', '#2a2e36'); return; }
+    if (st.mode === 'colour') setGlow(hsv2rgb(st.h ?? 30, (st.s ?? 100) / 100, 1), clamp(st.v ?? 100, 1, 100) / 100);
+    else if (st.mode === 'white') setGlow(whiteRGB(st.temp ?? 30), clamp(st.brightness ?? 80, 1, 100) / 100);
+    else setGlow(EFFECT_GLOW[effectName] || (lastStatic ? lightRGB(lastStatic) : [255, 183, 94]), 1);
+  }
+
+  // ---------------------------------------------------------- toasts
+  function toast(msg, kind = '') {
+    const el = document.createElement('div');
+    el.className = 'toast ' + kind; el.textContent = msg;
+    $('#toast').appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 260); }, kind === 'error' ? 7000 : 2600);
+  }
+
+  // ---------------------------------------------------------- api
+  class ApiError extends Error {
+    constructor(msg, status, data) { super(msg); this.status = status; this.data = data || {}; }
+  }
+  async function api(path, body, method) {
+    const opts = { method: method || (body !== undefined ? 'POST' : 'GET'), headers: {} };
+    if (token) opts.headers.Authorization = 'Bearer ' + token;
+    if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    let res;
+    try { res = await fetch(path, opts); }
+    catch (_) { throw new ApiError("Can't reach the bulb service. Check your internet connection.", 0); }
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    if (res.status === 401 && data.login) {
+      token = null; store.set(TOKEN_KEY, null); needPassword = true;
+      if (!$('#app').hidden) showStart('Please sign in again.');
+    }
+    if (!res.ok) throw new ApiError(data.error || `Request failed (${res.status})`, res.status, data);
+    return data;
+  }
+  // "latest wins" lanes: while one request is in flight only the newest value waits,
+  // and sends are spaced out so dragging a slider doesn't flood Tuya (or your quota)
+  const MIN_GAP_MS = 450;
+  const lanes = {};
+  function sendLatest(lane, path, body) {
+    const l = lanes[lane] || (lanes[lane] = { busy: false, next: null, last: 0 });
+    l.next = { path, body };
+    lastCommandAt = Date.now();
+    if (!l.busy) pump(l);
+  }
+  const framesInFlight = new Set();
+  function trackFrame(promise) {
+    framesInFlight.add(promise);
+    promise.finally(() => framesInFlight.delete(promise)).catch(() => {});
+    return promise;
+  }
+  async function pump(l) {
+    l.busy = true;
+    while (l.next) {
+      const wait = l.last + MIN_GAP_MS - Date.now();
+      if (wait > 0) await sleep(wait);  // newer values replace l.next meanwhile
+      // let any effect/music update that is already on its way arrive first
+      if (framesInFlight.size) await Promise.allSettled([...framesInFlight]);
+      const job = l.next; l.next = null; l.last = Date.now();
+      try { await api(job.path, job.body); markOnline(); }
+      catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+      lastCommandAt = Date.now();
+    }
+    l.busy = false;
+  }
+  function rawPost(path, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return fetch(path, { method: 'POST', headers, body: JSON.stringify(body) }).then(r => r.json());
+  }
+  // rough count of the frequent calls (music + page effects), per device and month
+  function usage() {
+    const month = new Date().toISOString().slice(0, 7);
+    let u = {};
+    try { u = JSON.parse(store.get('halonix-cloud-usage') || '{}'); } catch (_) {}
+    return u.month === month ? u : { month, calls: 0 };
+  }
+  function countUsage() {
+    const u = usage(); u.calls++;
+    store.set('halonix-cloud-usage', JSON.stringify(u));
+    if (currentTab === 'music') renderUsage();
+  }
+  function renderUsage() {
+    $('#usage-line').textContent = `Music sync and page effects have used about ${usage().calls.toLocaleString()} Tuya calls this month on this device.`;
+  }
+  function sendLight(light) {
+    FX.stop();
+    Music.carry = null;
+    lastStatic = { ...light };
+    effectName = null;
+    Object.assign(S.state, { on: true }, light);
+    if (light.mode === 'colour') sendLatest('light', '/api/colour', { h: light.h, s: light.s, v: light.v });
+    else sendLatest('light', '/api/white', { brightness: light.brightness, temp: light.temp });
+    renderAll();
+  }
+  function currentLight() {
+    const st = S.state;
+    if (st.mode === 'colour') return { mode: 'colour', h: st.h ?? 30, s: st.s ?? 100, v: st.v ?? 100 };
+    if (st.mode === 'white') return { mode: 'white', brightness: st.brightness ?? 80, temp: st.temp ?? 30 };
+    return lastStatic ? { ...lastStatic } : { mode: 'white', brightness: 80, temp: 30 };
+  }
+  function markOnline() { if (S && !S.connected) { S.connected = true; S.error = null; renderStatus(); } }
+
+  // ---------------------------------------------------------- render
+  function applySnapshot(snap) {
+    S = snap;
+    if (snap.state.on && (snap.state.mode === 'colour' || snap.state.mode === 'white')) lastStatic = currentLight();
+    effectName = snap.state.mode === 'scene' ? (snap.effect || effectName) : null;
+    renderAll();
+  }
+  function renderAll() {
+    renderStatus(); renderHero(); renderColour(); renderWhite(); renderEffects(); renderTimer(); renderSettings();
+  }
+  function renderStatus() {
+    const pill = $('#status-pill'), txt = pill.querySelector('span');
+    pill.className = 'pill ' + (S.connected ? 'ok' : 'err');
+    txt.textContent = S.connected ? 'Online' : 'Bulb offline';
+    $('#err-banner').hidden = !!S.connected;
+    if (!S.connected) $('#err-text').textContent = S.error || 'The bulb is not reachable.';
+  }
+  function renderHero() {
+    const st = S.state;
+    $('#bulb-name').textContent = S.device?.name || 'Halonix bulb';
+    $('#bulb-sub').textContent = '7W RGB · via Tuya cloud';
+    $('#power-btn').setAttribute('aria-pressed', String(!!st.on));
+    if (dragging !== 'bri') {
+      const b = st.mode === 'colour' ? st.v : st.mode === 'white' ? st.brightness : (lastStatic?.mode === 'colour' ? lastStatic.v : lastStatic?.brightness);
+      $('#bri').value = b ?? 80; $('#bri-val').textContent = (b ?? 80) + '%';
+    }
+    const parts = [];
+    if (!st.on) parts.push('<span class="chip-mini">Off</span>');
+    else if (Music.running) parts.push('<span class="chip-mini">Music sync</span>');
+    else if (FX.name) parts.push(`<span class="chip-mini">${escapeHtml(fxLabel(FX.name))} effect</span>`);
+    else if (st.mode === 'scene') parts.push(`<span class="chip-mini">${escapeHtml(effectName || 'Scene')}</span>`);
+    else if (st.mode === 'colour') parts.push(`<span class="chip-mini"><span class="light-dot" style="background:${rgb2hex(...hsv2rgb(st.h ?? 30, (st.s ?? 100) / 100, 1))}"></span>Colour</span>`);
+    else parts.push(`<span class="chip-mini">White · ${warmthLabel(st.temp ?? 30)}</span>`);
+    if (S.timer_until && st.on) parts.push('<span class="chip-mini">Sleep timer on</span>');
+    $('#mode-line').innerHTML = parts.join('');
+    if (!Music.running) previewState(st);
+  }
+
+  // ---------------------------------------------------------- colour wheel
+  const wheel = $('#wheel'), handle = $('#wheel-handle');
+  function drawWheel() {
+    const size = wheel.clientWidth; if (!size) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), N = Math.round(size * dpr);
+    if (wheel.dataset.n === String(N)) return;
+    wheel.dataset.n = N;
+    wheel.width = wheel.height = N;
+    const ctx = wheel.getContext('2d'), img = ctx.createImageData(N, N), r = N / 2;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const dx = x - r + .5, dy = y - r + .5, d = Math.hypot(dx, dy), i = (y * N + x) * 4;
+      if (d > r) continue;
+      const hue = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+      const [R, G, B] = hsv2rgb(hue, Math.min(1, d / r), 1);
+      img.data[i] = R; img.data[i + 1] = G; img.data[i + 2] = B; img.data[i + 3] = Math.round(clamp(r - d, 0, 1) * 255);
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function placeHandle(h, s) {
+    const a = h * Math.PI / 180, rr = s / 100 * 50;
+    handle.style.left = (50 + Math.cos(a) * rr) + '%';
+    handle.style.top = (50 + Math.sin(a) * rr) + '%';
+    handle.style.background = rgb2hex(...hsv2rgb(h, s / 100, 1));
+  }
+  function renderColour() {
+    const st = S.state;
+    $('#no-colour').hidden = S.caps?.colour !== false;
+    if (dragging === 'wheel') return;
+    placeHandle(st.h ?? 30, st.s ?? 100);
+    $('#colour-readout').textContent = st.mode === 'colour' ? `Hue ${st.h}° · Saturation ${st.s}%` : 'Pick a colour';
+  }
+  function brightnessNow() {
+    const st = S.state;
+    return st.mode === 'colour' ? (st.v || 100) : st.mode === 'white' ? (st.brightness || 100)
+      : (lastStatic ? (lastStatic.mode === 'colour' ? lastStatic.v : lastStatic.brightness) : 100);
+  }
+  function wheelPick(ev) {
+    const rect = wheel.getBoundingClientRect();
+    const dx = ev.clientX - rect.left - rect.width / 2, dy = ev.clientY - rect.top - rect.height / 2;
+    const h = Math.round((Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360);
+    const s = Math.round(clamp(Math.hypot(dx, dy) / (rect.width / 2), 0, 1) * 100);
+    placeHandle(h, s);
+    $('#colour-readout').textContent = `Hue ${h}° · Saturation ${s}%`;
+    sendLight({ mode: 'colour', h, s, v: brightnessNow() });
+  }
+  $('#wheel-wrap').addEventListener('pointerdown', e => {
+    if (!S) return;
+    if (Music.running) Music.stop(false);
+    dragging = 'wheel'; e.currentTarget.setPointerCapture(e.pointerId); e.currentTarget.classList.add('dragging'); wheelPick(e);
+  });
+  $('#wheel-wrap').addEventListener('pointermove', e => { if (dragging === 'wheel') wheelPick(e); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => $('#wheel-wrap').addEventListener(t, () => {
+    if (dragging === 'wheel') dragging = null;
+    $('#wheel-wrap').classList.remove('dragging');
+  }));
+
+  const SWATCHES = [0, 18, 35, 52, 90, 130, 175, 205, 235, 270, 300, 330];
+  $('#swatches').innerHTML = SWATCHES.map(h => `<button class="swatch" data-h="${h}" style="background:${rgb2hex(...hsv2rgb(h, 1, 1))}" aria-label="Hue ${h}"></button>`).join('');
+  $('#swatches').addEventListener('click', e => {
+    const b = e.target.closest('.swatch'); if (!b || !S) return;
+    if (Music.running) Music.stop(false);
+    sendLight({ mode: 'colour', h: +b.dataset.h, s: 100, v: brightnessNow() });
+  });
+
+  // ---------------------------------------------------------- brightness + power
+  $('#bri').addEventListener('input', e => {
+    if (!S) return;
+    dragging = 'bri';
+    const v = +e.target.value; $('#bri-val').textContent = v + '%';
+    const l = currentLight();
+    if (l.mode === 'colour') l.v = v; else l.brightness = v;
+    sendLight(l);
+  });
+  $('#bri').addEventListener('change', () => { dragging = null; });
+  $('#power-btn').addEventListener('click', () => {
+    if (!S) return;
+    const on = !S.state.on;
+    if (Music.running) Music.stop(false);
+    FX.stop();
+    S.state.on = on;
+    if (!on) S.timer_until = null;
+    renderAll();
+    sendLatest('light', '/api/power', { on });
+  });
+
+  // ---------------------------------------------------------- white
+  const WHITES = [{ name: 'Warm', t: 0 }, { name: 'Soft', t: 25 }, { name: 'Neutral', t: 50 }, { name: 'Cool', t: 75 }, { name: 'Daylight', t: 100 }];
+  $('#white-presets').innerHTML = WHITES.map(w => {
+    const c = rgb2hex(...whiteRGB(w.t));
+    return `<button class="tile" data-t="${w.t}" style="background:linear-gradient(160deg,#fff,${c})"><b>${w.name}</b><small>${kelvin(w.t)}K</small></button>`;
+  }).join('');
+  function setWhite(t) {
+    if (Music.running) Music.stop(false);
+    const bri = S.state.mode === 'white' ? (S.state.brightness || 100) : (lastStatic?.mode === 'white' ? lastStatic.brightness : (S.state.brightness || 100));
+    sendLight({ mode: 'white', brightness: bri, temp: t });
+  }
+  $('#white-presets').addEventListener('click', e => { const b = e.target.closest('.tile'); if (b && S) setWhite(+b.dataset.t); });
+  $('#temp').addEventListener('input', e => { if (!S) return; dragging = 'temp'; setWhite(+e.target.value); });
+  $('#temp').addEventListener('change', () => { dragging = null; });
+  function renderWhite() {
+    const t = S.state.temp ?? 30;
+    $('#no-temp').hidden = S.caps?.colourtemp !== false;
+    $('#temp').disabled = S.caps?.colourtemp === false;
+    if (dragging !== 'temp') $('#temp').value = t;
+    $('#temp-val').textContent = `${warmthLabel(t)} · ${kelvin(t)}K`;
+    $$('#white-presets .tile').forEach(b => b.classList.toggle('active', S.state.on && S.state.mode === 'white' && Math.abs(+b.dataset.t - t) < 3));
+  }
+
+  // ---------------------------------------------------------- scenes + effects
+  const PRESETS = [
+    { name: 'Relax', sub: 'Warm and cosy', light: { mode: 'white', brightness: 45, temp: 0 } },
+    { name: 'Reading', sub: 'Neutral white', light: { mode: 'white', brightness: 100, temp: 50 } },
+    { name: 'Focus', sub: 'Cool daylight', light: { mode: 'white', brightness: 100, temp: 100 } },
+    { name: 'Movie', sub: 'Deep blue', light: { mode: 'colour', h: 230, s: 90, v: 18 } },
+    { name: 'Night light', sub: 'Dim amber', light: { mode: 'colour', h: 28, s: 100, v: 5 } },
+    { name: 'Romance', sub: 'Rose red', light: { mode: 'colour', h: 345, s: 85, v: 35 } },
+    { name: 'Sunset', sub: 'Orange glow', light: { mode: 'colour', h: 18, s: 95, v: 75 } },
+    { name: 'Forest', sub: 'Calm green', light: { mode: 'colour', h: 130, s: 70, v: 55 } },
+  ];
+  const EFFECTS = [
+    { id: 'rainbow', name: 'Rainbow', sub: 'Cycles every colour', bg: 'linear-gradient(120deg,#ff3b3b,#ffb03b,#f5ff3b,#3bff6a,#3bd5ff,#6a3bff,#ff3bd2,#ff3b3b)' },
+    { id: 'breathe', name: 'Breathe', sub: 'Current colour, slow pulse', bg: 'linear-gradient(120deg,#1b1f2a,#ff9a3c,#1b1f2a)' },
+    { id: 'candle', name: 'Candle', sub: 'Warm flicker', bg: 'linear-gradient(120deg,#5a1e00,#ff8a1f,#ffc14d,#7a2a00)' },
+    { id: 'party', name: 'Party', sub: 'Colour jumps', bg: 'linear-gradient(120deg,#ff2e8a,#7b2cff,#00e0ff,#ffe600,#ff2e8a)' },
+    { id: 'ocean', name: 'Ocean', sub: 'Drifting blues', bg: 'linear-gradient(120deg,#001f3f,#0074d9,#39cccc,#001f3f)' },
+    { id: 'aurora', name: 'Aurora', sub: 'Greens into violet', bg: 'linear-gradient(120deg,#0b3d2e,#1affa0,#5b2cff,#0b3d2e)' },
+  ];
+  function lightCss(l) {
+    const [r, g, b] = lightRGB(l), k = 0.35 + 0.65 * ((l.mode === 'colour' ? l.v : l.brightness) / 100);
+    return `linear-gradient(150deg, rgba(${r},${g},${b},${k}), rgba(${Math.round(r * .35)},${Math.round(g * .35)},${Math.round(b * .35)},.9))`;
+  }
+  $('#preset-tiles').innerHTML = PRESETS.map((p, i) => `<button class="tile" data-i="${i}" style="background:${lightCss(p.light)}"><b>${p.name}</b><small>${p.sub}</small></button>`).join('');
+  $('#effect-tiles').innerHTML = EFFECTS.map(e => `<button class="tile fx" data-fx="${e.id}" style="background-image:${e.bg}"><b>${e.name}</b><small>${e.sub}</small></button>`).join('');
+  $('#preset-tiles').addEventListener('click', e => {
+    const b = e.target.closest('.tile'); if (!b || !S) return;
+    if (Music.running) Music.stop(false);
+    sendLight({ ...PRESETS[+b.dataset.i].light });
+  });
+  const fxLabel = id => EFFECTS.find(e => e.id === id)?.name || id;
+
+  // Effects the bulb can't run by itself: this page animates them with plain colour changes
+  const FX_EVERY_MS = 2000, FX_LIMIT_MIN = 10;
+  const FX = {
+    name: null, timer: null, t0: 0, base: null, inflight: false, stopAt: 0, flicker: 80, fails: 0,
+    startPage(name, base) {
+      this.stop();
+      Object.assign(this, { name, fails: 0, base: { h: base.h ?? 30, s: Math.max(base.s ?? 100, 60) }, t0: Date.now(), stopAt: Date.now() + FX_LIMIT_MIN * 60000 });
+      this.frame();
+      this.timer = setInterval(() => this.frame(), FX_EVERY_MS);
+    },
+    stop() {
+      if (this.timer) clearInterval(this.timer);
+      this.timer = null; this.name = null;
+    },
+    frame() {
+      if (!this.name || !S) return;
+      if (Date.now() > this.stopAt) {
+        const n = fxLabel(this.name); this.stop(); renderAll();
+        toast(`${n} stopped after ${FX_LIMIT_MIN} minutes to save Tuya calls.`);
+        return;
+      }
+      if (this.inflight) return;
+      const t = (Date.now() - this.t0) / 1000, rate = 0.25 + (+$('#fx-speed').value) / 100 * 2, b = this.base;
+      let h, s = 100, v = 100;
+      switch (this.name) {
+        case 'rainbow': h = b.h + t * 12 * rate; break;
+        case 'breathe': h = b.h; s = b.s; v = 10 + 90 * (0.5 - 0.5 * Math.cos(t * rate * 0.5)); break;
+        case 'candle': this.flicker += (30 + Math.random() * 70 - this.flicker) * 0.6; h = 22 + Math.random() * 10; s = 95; v = this.flicker; break;
+        case 'party': h = [0, 30, 55, 120, 180, 220, 275, 310][Math.floor(Math.random() * 8)]; break;
+        case 'ocean': h = 200 + 25 * Math.sin(t * rate * 0.3); s = 90; v = 55 + 40 * (0.5 + 0.5 * Math.sin(t * rate * 0.45)); break;
+        default: h = 140 + 90 * (0.5 + 0.5 * Math.sin(t * rate * 0.2)); s = 85; v = 60 + 35 * (0.5 + 0.5 * Math.sin(t * rate * 0.35));
+      }
+      const o = { h: ((Math.round(h) % 360) + 360) % 360, s: Math.round(s), v: Math.max(1, Math.round(v)) };
+      Object.assign(S.state, { on: true, mode: 'colour' }, o);
+      setGlow(hsv2rgb(o.h, o.s / 100, 1), o.v / 100);
+      this.inflight = true; lastCommandAt = Date.now();
+      const name = this.name;
+      trackFrame(rawPost('/api/colour', o))
+        .then(d => { if (d.ok) { countUsage(); this.fails = 0; } else this.failed(name, d.error); })
+        .catch(() => this.failed(name))
+        .finally(() => { this.inflight = false; });
+    },
+    failed(name, message) {
+      if (this.name !== name || ++this.fails < 2) return;
+      this.stop(); renderAll();
+      toast(`${fxLabel(name)} stopped: ${message || "the bulb service isn't answering"}`, 'error');
+    },
+  };
+
+  async function startEffect(id) {
+    if (Music.running) await Music.stop(false);
+    FX.stop();
+    const base = lastStatic && lastStatic.mode === 'colour' ? lastStatic : { h: 30, s: 100 };
+    const tile = $(`#effect-tiles .tile[data-fx="${id}"]`);
+    tile?.classList.add('busy');
+    const saved = store.get('halonix-scene-shape') || '';
+    // this bulb recently refused built-in effects: animate from the page straight away (re-checked weekly)
+    if (saved.startsWith('none:') && Date.now() - Number(saved.slice(5)) < 7 * 864e5) {
+      tile?.classList.remove('busy');
+      FX.startPage(id, base); effectName = null; renderAll();
+      return;
+    }
+    try {
+      lastCommandAt = Date.now();
+      const res = await api('/api/effect', { name: id, speed: +$('#fx-speed').value, h: base.h, s: base.s,
+        ...(/^\d$/.test(saved) ? { shape: Number(saved) } : {}) });
+      if (res.ok) {
+        store.set('halonix-scene-shape', String(res.shape));
+        effectName = id;
+        Object.assign(S.state, { on: true, mode: 'scene' });
+        toast(`${fxLabel(id)} is running on the bulb`, 'ok');
+      } else {
+        store.set('halonix-scene-shape', 'none:' + Date.now());
+        effectName = null;
+        FX.startPage(id, base);
+        toast(`Your bulb can't run ${fxLabel(id)} by itself, so this page is animating it. Keep the page open; it stops after ${FX_LIMIT_MIN} minutes.`);
+      }
+      markOnline();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { tile?.classList.remove('busy'); renderAll(); }
+  }
+  $('#effect-tiles').addEventListener('click', e => { const b = e.target.closest('.tile'); if (b && S) startEffect(b.dataset.fx); });
+  $('#fx-speed').addEventListener('input', e => { $('#speed-val').textContent = e.target.value; });
+  // page-animated effects pick up the new speed by themselves; bulb effects need resending
+  $('#fx-speed').addEventListener('change', () => { if (effectName && !FX.name && S?.state.mode === 'scene') startEffect(effectName); });
+  $('#fx-stop').addEventListener('click', () => sendLight(lastStatic || { mode: 'white', brightness: 80, temp: 30 }));
+  function renderEffects() {
+    const active = FX.name || (S.state.on && S.state.mode === 'scene' ? effectName : null);
+    $$('#effect-tiles .tile').forEach(t => t.classList.toggle('active', t.dataset.fx === active));
+    $('#fx-stop').disabled = !(FX.name || (S.state.on && S.state.mode === 'scene'));
+  }
+
+  // ---------------------------------------------------------- music sync
+  const SEND_EVERY_MS = 1000;  // at most one change a second keeps Tuya API use low
+  const Music = {
+    running: false, starting: false, style: 'flow', source: 'mic', smooth: 0, lastHueJump: 0, stopAt: 0, fails: 0,
+    ctx: null, stream: null, analyser: null, proc: null, freq: null, upsTimer: null,
+    hist: [], lastBeat: 0, peak: 0.15, hue: 0, flash: 0, level: 0, beatFlag: 0,
+    out: { h: 0, s: 100, v: 100 }, lastSent: 0, lastSentVal: null, inflight: false, sentCount: 0, lastTick: 0, preMusic: null, carry: null,
+
+    async start() {
+      if (!S || this.running || this.starting) return;
+      if (!navigator.mediaDevices) { toast('This browser cannot listen to audio here. Try Chrome, Edge or Safari.', 'error'); return; }
+      this.starting = true;
+      // create the audio engine inside the click, before the permission prompt
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      let stream;
+      try {
+        if (this.source === 'mic') {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        } else {
+          if (!navigator.mediaDevices.getDisplayMedia) throw new Error('Tab audio needs Chrome or Edge on a computer.');
+          stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+          if (!stream.getAudioTracks().length) {
+            stream.getTracks().forEach(t => t.stop());
+            throw new Error('No audio was shared. Choose a browser tab and turn on "Share tab audio".');
+          }
+        }
+      } catch (e) {
+        ctx.close().catch(() => {});
+        this.starting = false;
+        toast(e.name === 'NotAllowedError' ? 'Permission to listen was denied.' : e.message, 'error');
+        return;
+      }
+      this.stream = stream; this.ctx = ctx;
+      if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+      stream.getAudioTracks()[0].addEventListener('ended', () => this.stop());
+      const src = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      this.analyser = ctx.createAnalyser();
+      this.analyser.fftSize = 2048; this.analyser.smoothingTimeConstant = 0.55;
+      this.freq = new Uint8Array(this.analyser.frequencyBinCount);
+      src.connect(this.analyser);
+      // audio callbacks keep running in background tabs; the node outputs silence
+      this.proc = ctx.createScriptProcessor(1024, 1, 1);
+      const mute = ctx.createGain(); mute.gain.value = 0;
+      src.connect(this.proc); this.proc.connect(mute); mute.connect(ctx.destination);
+      this.proc.onaudioprocess = () => this.tick();
+      // carry: switching audio source keeps the light we saved the first time
+      this.preMusic = this.carry || (S.state.on ? currentLight() : { mode: 'off' });
+      this.carry = null;
+      Object.assign(this, { hist: [], lastBeat: 0, peak: 0.15, flash: 0, smooth: 0, lastHueJump: 0, fails: 0, hue: S.state.h || 0, lastTick: performance.now(), sentCount: 0, lastSentVal: null, lastSent: 0 });
+      this.running = true; this.starting = false;
+      effectName = null;
+      FX.stop();
+      renderMusicBtn(); renderHero();
+      requestAnimationFrame(drawViz);
+      this.stopAt = Date.now() + (+$('#music-limit').value || 10) * 60000;
+      this.upsTimer = setInterval(() => {
+        $('#ups-val').textContent = this.sentCount + '/s'; this.sentCount = 0;
+        const left = this.stopAt - Date.now();
+        if (left <= 0) { this.stop(); toast('Music sync stopped by itself to save Tuya calls. Start it again any time.'); return; }
+        $('#music-left').textContent = 'stops in ' + fmtLeft(left / 1000);
+      }, 1000);
+    },
+
+    async stop(restore = true) {
+      if (!this.running) return;
+      this.running = false;
+      clearInterval(this.upsTimer);
+      if (this.proc) this.proc.onaudioprocess = null;
+      if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+      const ctx = this.ctx;
+      Object.assign(this, { ctx: null, stream: null, proc: null, analyser: null });
+      if (ctx) ctx.close().catch(() => {});
+      renderMusicBtn();
+      $('#music-orb').style.transform = '';
+      $('#music-left').textContent = '';
+      if (S) Object.assign(S.state, { on: true, mode: 'colour' }, this.out);
+      const pre = this.preMusic;
+      if (restore && pre && pre.mode === 'off') { S.state.on = false; renderAll(); sendLatest('light', '/api/power', { on: false }); }
+      else if (restore && pre) sendLight(pre);
+      else if (S) renderAll();
+      this.preMusic = null;
+    },
+
+    band(lo, hi) {
+      const hz = this.ctx.sampleRate / this.analyser.fftSize, f = this.freq;
+      const a = Math.max(1, Math.floor(lo / hz)), b = Math.min(f.length - 1, Math.ceil(hi / hz));
+      let sum = 0; for (let i = a; i <= b; i++) sum += f[i];
+      return sum / ((b - a + 1) * 255);
+    },
+
+    tick() {
+      if (!this.running || !this.analyser) return;
+      const now = performance.now(), dt = Math.min(0.2, (now - this.lastTick) / 1000); this.lastTick = now;
+      this.analyser.getByteFrequencyData(this.freq);
+      const bass = this.band(35, 160), mid = this.band(160, 2000), treble = this.band(2000, 9000);
+      const energy = 0.5 * bass + 0.35 * mid + 0.15 * treble;
+      this.peak = Math.max(this.peak * Math.pow(0.85, dt), energy, 0.06);
+      const norm = clamp(energy / this.peak, 0, 1);
+      this.level = norm;
+      const sens = +$('#sens').value / 100;
+      this.hist.push(bass); if (this.hist.length > 40) this.hist.shift();
+      const avg = this.hist.reduce((a, b) => a + b, 0) / this.hist.length;
+      const beat = bass > avg * (1.08 + (1 - sens) * 0.45) + 0.015 && bass > 0.07 && now - this.lastBeat > 180;
+      if (beat) { this.lastBeat = now; this.beatFlag = 1; }
+      const maxV = +$('#maxb').value;
+      // the bulb only changes about once a second, so follow a ~0.4 s average, not every peak
+      this.smooth += (norm - this.smooth) * Math.min(1, dt * 2.5);
+      this.flash *= Math.pow(0.05, dt);
+      if (this.style === 'beat') {
+        if (beat && now - this.lastHueJump > 1100) { this.hue = (this.hue + 60 + Math.random() * 120) % 360; this.flash = 1; this.lastHueJump = now; }
+      } else {
+        this.hue = (this.hue + dt * (8 + this.smooth * 50)) % 360;
+        if (beat) this.flash = Math.max(this.flash, 0.5);
+      }
+      const v = maxV * clamp(0.2 + 0.65 * this.smooth + 0.15 * this.flash, 0.05, 1);
+      this.out = { h: Math.round(this.hue) % 360, s: 100, v: Math.max(1, Math.round(v)) };
+      setGlow(hsv2rgb(this.out.h, 1, 1), this.out.v / 100);
+      this.maybeSend(now);
+    },
+
+    maybeSend(now) {
+      if (this.inflight || now - this.lastSent < SEND_EVERY_MS) return;
+      const o = this.out, p = this.lastSentVal;
+      const hueDiff = p ? Math.min(Math.abs(o.h - p.h), 360 - Math.abs(o.h - p.h)) : 999;
+      if (p && hueDiff < 15 && Math.abs(o.v - p.v) < 12 && now - this.lastSent < 4000) return;  // not worth a call
+      this.inflight = true; this.lastSent = now; this.lastSentVal = { ...o };
+      lastCommandAt = Date.now();
+      trackFrame(rawPost('/api/music/frame', o))
+        .then(d => { if (d.ok) { this.sentCount++; this.fails = 0; countUsage(); } else this.failed(d.error); })
+        .catch(() => this.failed())
+        .finally(() => { this.inflight = false; });
+    },
+
+    failed(message) {
+      if (!this.running || ++this.fails < 3) return;
+      this.stop(false);
+      toast(`Music sync stopped: ${message || "the bulb service isn't answering"}`, 'error');
+    },
+  };
+
+  const viz = $('#viz');
+  function drawViz() {
+    if (!Music.running) { clearViz(); return; }
+    requestAnimationFrame(drawViz);
+    if (document.hidden || currentTab !== 'music' || !Music.analyser) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2), W = viz.clientWidth * dpr, H = viz.clientHeight * dpr;
+    if (viz.width !== W || viz.height !== H) { viz.width = W; viz.height = H; }
+    const c = viz.getContext('2d'); c.clearRect(0, 0, W, H);
+    const f = Music.freq, bars = 56, hz = Music.ctx.sampleRate / Music.analyser.fftSize;
+    const [r, g, b] = hsv2rgb(Music.out.h, 1, 1);
+    const gw = W / bars;
+    for (let i = 0; i < bars; i++) {
+      const lo = 35 * Math.pow(9000 / 35, i / bars), hi = 35 * Math.pow(9000 / 35, (i + 1) / bars);
+      let m = 0; for (let k = Math.floor(lo / hz); k <= Math.ceil(hi / hz); k++) m = Math.max(m, f[k] || 0);
+      const bh = Math.max(2 * dpr, (m / 255) * H * 0.9);
+      c.fillStyle = `rgba(${r},${g},${b},${0.25 + 0.75 * m / 255})`;
+      c.fillRect(i * gw + gw * 0.18, H - bh, gw * 0.64, bh);
+    }
+    $('#music-orb').style.transform = `scale(${(0.85 + Music.out.v / 100 * 0.45).toFixed(3)})`;
+    $('#level-val').textContent = Math.round(Music.level * 100) + '%';
+    const bd = $('#beat-dot');
+    if (Music.beatFlag) { bd.textContent = '●'; bd.style.color = `rgb(${r},${g},${b})`; Music.beatFlag = 0; setTimeout(() => { bd.textContent = '○'; }, 120); }
+  }
+  function clearViz() {
+    const c = viz.getContext('2d'); c.clearRect(0, 0, viz.width, viz.height);
+    $('#beat-dot').textContent = '-'; $('#level-val').textContent = '0%'; $('#ups-val').textContent = '0/s';
+  }
+  function renderMusicBtn() {
+    const b = $('#music-btn');
+    b.querySelector('span').textContent = Music.running ? 'Stop music sync' : 'Start music sync';
+    b.classList.toggle('primary', !Music.running);
+  }
+  $('#music-btn').addEventListener('click', () => Music.running ? Music.stop() : Music.start());
+  function bindSeg(sel, onPick) {
+    $(sel).addEventListener('click', e => {
+      const b = e.target.closest('button[data-v]'); if (!b) return;
+      $$(sel + ' button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      onPick(b.dataset.v);
+    });
+  }
+  function setSeg(sel, v) { $$(sel + ' button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === v))); }
+  bindSeg('#style-seg', v => { Music.style = v; savePrefs(); });
+  bindSeg('#src-seg', v => {
+    Music.source = v; savePrefs();
+    if (Music.running) {
+      const pre = Music.preMusic;
+      Music.stop(false);
+      Music.carry = pre;
+      toast('Press Start music sync again to listen to the new source.');
+    }
+  });
+  $('#sens').addEventListener('input', e => { $('#sens-val').textContent = e.target.value; savePrefs(); });
+  $('#maxb').addEventListener('input', e => { $('#maxb-val').textContent = e.target.value + '%'; savePrefs(); });
+  $('#music-limit').addEventListener('change', savePrefs);
+
+  function savePrefs() {
+    store.set('halonix-cloud-prefs', JSON.stringify({ style: Music.style, source: Music.source, sens: $('#sens').value, maxb: $('#maxb').value, limit: $('#music-limit').value, tab: currentTab }));
+  }
+  function loadPrefs() {
+    try {
+      const p = JSON.parse(store.get('halonix-cloud-prefs') || '{}');
+      if (p.style) { Music.style = p.style === 'beat' ? 'beat' : 'flow'; setSeg('#style-seg', Music.style); }
+      if (p.limit && [...$('#music-limit').options].some(o => o.value === p.limit)) $('#music-limit').value = p.limit;
+      if (p.source) { Music.source = p.source; setSeg('#src-seg', p.source); }
+      if (p.sens) { $('#sens').value = p.sens; $('#sens-val').textContent = p.sens; }
+      if (p.maxb) { $('#maxb').value = p.maxb; $('#maxb-val').textContent = p.maxb + '%'; }
+      return p;
+    } catch (_) { return {}; }
+  }
+
+  // ---------------------------------------------------------- sleep timer
+  function fmtLeft(sec) {
+    sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+  }
+  function renderTimer() {
+    $('#timer-section').hidden = S?.caps?.timer === false;
+    let until = S?.timer_until;
+    if (until && until <= Date.now() / 1000) { S.timer_until = until = null; S.state.on = false; renderHero(); }
+    $('#timer-cancel').hidden = !until;
+    if (until) {
+      $('#timer-left').textContent = fmtLeft(until - Date.now() / 1000);
+      $('#timer-note').textContent = 'until the bulb turns off (runs on the bulb)';
+    } else {
+      $('#timer-left').textContent = 'Off';
+      $('#timer-note').textContent = S?.state?.on ? 'Turn the bulb off after a while.' : 'Turn the bulb on to use the sleep timer.';
+    }
+  }
+  setInterval(() => { if (S?.timer_until) renderTimer(); }, 1000);
+  $('#timer-btns').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-min]'); if (!b || !S) return;
+    const min = +b.dataset.min;
+    if (min && !S.state.on) { toast('Turn the bulb on first.', 'error'); return; }
+    try {
+      lastCommandAt = Date.now();
+      const res = await api('/api/timer', { minutes: min });
+      S.timer_until = res.timer_until; renderTimer(); renderHero();
+      toast(min ? `Turning off in ${b.textContent}` : 'Sleep timer cancelled', 'ok');
+    } catch (err) { toast(err.message, 'error'); }
+  });
+
+  // ---------------------------------------------------------- schedules
+  const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  let schedules = [], editing = null, form = { action: 'on', light: 'last', days: [0, 1, 2, 3, 4, 5, 6] }, schedBusy = false;
+  $('#f-days').innerHTML = DAY_NAMES.map((d, i) => `<button type="button" class="day" data-d="${i}" aria-pressed="true" aria-label="${d}">${d[0]}</button>`).join('');
+
+  function daysText(it) {
+    const days = it.days || [];
+    if (!days.length) return it.date ? 'Once on ' + new Date(it.date + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Once';
+    if (days.length === 7) return 'Every day';
+    if (days.join() === '0,1,2,3,4') return 'Weekdays';
+    if (days.join() === '5,6') return 'Weekends';
+    return days.map(d => DAY_NAMES[d]).join(', ');
+  }
+  function lightText(l) {
+    if (!l) return 'last setting';
+    if (l.mode === 'colour') return `colour ${Math.round(l.v)}%`;
+    return `${warmthLabel(l.temp).toLowerCase()} white ${Math.round(l.brightness)}%`;
+  }
+  function nextRun(it) {
+    const [hh, mm] = it.time.split(':').map(Number), now = new Date();
+    if (!it.days.length) {
+      if (!it.date) return '';
+      const t = new Date(it.date + 'T' + it.time);
+      if (t <= now) return 'done';
+      const d = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
+      return d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : DAY_NAMES[(t.getDay() + 6) % 7];
+    }
+    for (let d = 0; d < 8; d++) {
+      const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, hh, mm);
+      if (t <= now) continue;
+      const wd = (t.getDay() + 6) % 7;
+      if (!it.days.includes(wd)) continue;
+      return d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : DAY_NAMES[wd];
+    }
+    return '';
+  }
+  function renderSchedules() {
+    const list = $('#sched-list');
+    if (!schedules.length) {
+      list.innerHTML = '<div class="empty">No schedules yet. Add one to wake up to a sunrise fade or switch off at bedtime.</div>';
+      return;
+    }
+    list.innerHTML = schedules.map(it => {
+      const dot = it.action === 'on' && it.light ? `<span class="light-dot" style="background:${rgb2hex(...lightRGB(it.light))}"></span>` : '';
+      const what = it.action === 'on' ? `Turn on · ${dot}${lightText(it.light)}` : 'Turn off';
+      const fade = it.fade ? ` · fades in over ${it.fade} min` : '';
+      const nxt = it.enabled ? nextRun(it) : '';
+      return `<div class="sched ${it.enabled ? '' : 'off'}" data-id="${escapeHtml(it.id)}">
+        <div class="sched-time">${escapeHtml(it.time)}<small class="${it.action === 'on' ? 'on' : 'off'}">${it.action === 'on' ? 'On' : 'Off'}</small></div>
+        <div class="sched-info"><b>${escapeHtml(it.name) || (it.action === 'on' ? 'Turn on' : 'Turn off')}</b>${what}${fade}<br>${escapeHtml(daysText(it))}${nxt ? ' · next: ' + nxt : ''}</div>
+        <div class="sched-actions">
+          <label class="switch" title="Enabled"><input type="checkbox" data-act="toggle" ${it.enabled ? 'checked' : ''} aria-label="Enabled"><span></span></label>
+          <button class="btn small" data-act="run">Test</button>
+          <button class="btn small" data-act="edit">Edit</button>
+          <button class="btn small danger" data-act="del">Delete</button>
+        </div></div>`;
+    }).join('');
+  }
+  async function loadSchedules() {
+    if (!S) return;
+    $('#sched-list').innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+    try { schedules = (await api('/api/schedules')).schedules; renderSchedules(); }
+    catch (e) { $('#sched-list').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; }
+  }
+  $('#sched-list').addEventListener('click', async e => {
+    const el = e.target.closest('[data-act]'); if (!el || schedBusy) return;
+    const card = el.closest('.sched'), it = schedules.find(s => s.id === card.dataset.id), act = el.dataset.act;
+    if (!it) return;
+    const sid = encodeURIComponent(it.id);
+    schedBusy = true;
+    try {
+      if (act === 'toggle') { schedules = (await api(`/api/schedules/${sid}/enable`, { enabled: el.checked })).schedules; renderSchedules(); }
+      else if (act === 'del') {
+        if (confirm(`Delete the ${it.time} schedule?`)) { schedules = (await api(`/api/schedules/${sid}`, undefined, 'DELETE')).schedules; renderSchedules(); }
+      }
+      else if (act === 'run') { lastCommandAt = Date.now(); await api(`/api/schedules/${sid}/run`, {}); toast('Done: that is what it will do.', 'ok'); setTimeout(refresh, 2500); }
+      else if (act === 'edit') openForm(it);
+    } catch (err) { toast(err.message, 'error'); if (act === 'toggle') el.checked = !el.checked; }
+    finally { schedBusy = false; }
+  });
+
+  function openForm(it) {
+    editing = it || null;
+    const l = it?.light;
+    form = { action: it?.action || 'on', light: l ? l.mode : 'last', days: it ? [...it.days] : [0, 1, 2, 3, 4, 5, 6] };
+    $('#f-time').value = it?.time || '07:00';
+    $('#f-name').value = it?.name || '';
+    const fades = [...$('#f-fade').options].map(o => +o.value);
+    $('#f-fade').value = String(fades.reduce((a, b) => Math.abs(b - (it?.fade || 0)) < Math.abs(a - (it?.fade || 0)) ? b : a, 0));
+    if (l?.mode === 'colour') { $('#f-colour').value = rgb2hex(...hsv2rgb(l.h, l.s / 100, 1)); $('#f-bri').value = l.v; }
+    else if (l) { $('#f-bri').value = l.brightness; $('#f-temp').value = l.temp; }
+    else { $('#f-bri').value = 100; $('#f-temp').value = 20; }
+    syncForm();
+    $('#sched-form').hidden = false;
+    $('#add-sched').hidden = true;
+    $('#sched-form').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  function closeForm() { $('#sched-form').hidden = true; $('#add-sched').hidden = false; editing = null; }
+  function syncForm() {
+    setSeg('#f-action', form.action); setSeg('#f-light', form.light);
+    $('#f-light-box').hidden = form.action !== 'on';
+    $('#f-fade-box').hidden = form.action !== 'on';
+    $('#f-light-opts').hidden = form.light === 'last';
+    $('#f-temp-box').hidden = form.light !== 'white';
+    $('#f-colour-box').hidden = form.light !== 'colour';
+    $('#f-bri-val').textContent = $('#f-bri').value + '%';
+    $('#f-temp-val').textContent = warmthLabel(+$('#f-temp').value);
+    $$('#f-days .day').forEach(b => b.setAttribute('aria-pressed', String(form.days.includes(+b.dataset.d))));
+  }
+  $('#add-sched').addEventListener('click', () => openForm(null));
+  $('#f-cancel').addEventListener('click', closeForm);
+  bindSeg('#f-action', v => { form.action = v; syncForm(); });
+  bindSeg('#f-light', v => { form.light = v; syncForm(); });
+  $('#f-bri').addEventListener('input', syncForm);
+  $('#f-temp').addEventListener('input', syncForm);
+  $('#f-days').addEventListener('click', e => {
+    const b = e.target.closest('.day'); if (!b) return;
+    const d = +b.dataset.d;
+    form.days = form.days.includes(d) ? form.days.filter(x => x !== d) : [...form.days, d].sort((a, b) => a - b);
+    syncForm();
+  });
+  $$('[data-days]').forEach(b => b.addEventListener('click', () => {
+    form.days = b.dataset.days ? b.dataset.days.split(',').map(Number) : []; syncForm();
+  }));
+  $('#sched-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (schedBusy) return;
+    let light = null;
+    if (form.action === 'on' && form.light === 'white') light = { mode: 'white', brightness: +$('#f-bri').value, temp: +$('#f-temp').value };
+    if (form.action === 'on' && form.light === 'colour') {
+      const [h, s] = rgb2hsv(...hex2rgb($('#f-colour').value));
+      light = { mode: 'colour', h, s: Math.max(s, 20), v: +$('#f-bri').value };
+    }
+    const body = {
+      id: editing?.id, name: $('#f-name').value.trim(), time: $('#f-time').value, action: form.action,
+      fade: form.action === 'on' ? +$('#f-fade').value : 0, days: form.days, light, enabled: editing && form.days.length ? editing.enabled : true,
+    };
+    const btn = $('#f-save'), old = btn.innerHTML;
+    schedBusy = true; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+    try {
+      schedules = (await api('/api/schedules', body)).schedules;
+      renderSchedules(); closeForm();
+      toast(form.days.length ? 'Schedule saved' : 'Saved: it runs once at ' + body.time, 'ok');
+    } catch (err) { toast(err.message, 'error'); }
+    finally { schedBusy = false; btn.disabled = false; btn.innerHTML = old; }
+  });
+
+  // ---------------------------------------------------------- settings
+  function renderSettings() {
+    $('#account-box').hidden = !S.auth;
+    const d = S.device || {}, id = d.id || '';
+    $('#dev-info').innerHTML = `<dl class="kv">
+        <dt>Name</dt><dd>${escapeHtml(d.name)}</dd>
+        <dt>Status</dt><dd>${S.connected ? '<span style="color:var(--ok)">Online</span>' : '<span style="color:var(--err)">Offline</span>'}</dd>
+        <dt>Product</dt><dd>${escapeHtml(d.product || '-')}</dd>
+        <dt>Device ID</dt><dd>${escapeHtml(id.slice(0, 6))}…${escapeHtml(id.slice(-4))}</dd>
+      </dl>`;
+  }
+  $('#dev-list-btn').addEventListener('click', async e => {
+    const btn = e.currentTarget, old = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading…';
+    try {
+      const { devices, current } = await api('/api/devices');
+      $('#dev-list').innerHTML = devices.length ? devices.map(d => `<div class="dev"><div><b>${escapeHtml(d.name)}</b>${d.is_light ? '<span class="badge">light</span>' : ''}${d.id === current ? '<span class="badge">in use</span>' : ''}
+          <div class="meta">${escapeHtml(d.product)} · ${escapeHtml(d.id)} · ${d.online ? 'online' : 'offline'}</div></div></div>`).join('')
+        : '<div class="empty">No devices in this Tuya project yet.</div>';
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = old; }
+  });
+  $('#signout-btn').addEventListener('click', () => signOut('Signed out.'));
+  $('#debug-btn').addEventListener('click', async e => {
+    const btn = e.currentTarget, old = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading…';
+    try {
+      const text = JSON.stringify(await api('/api/debug'), null, 2);
+      const out = $('#debug-out'); out.textContent = text; out.hidden = false;
+      try { await navigator.clipboard.writeText(text); toast('Bulb details copied', 'ok'); }
+      catch (_) { toast('Select the text below and copy it.'); }
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = old; }
+  });
+
+  // ---------------------------------------------------------- tabs
+  const ink = Object.assign(document.createElement('span'), { className: 'tab-ink' });
+  $('.tabs').appendChild(ink);
+  function moveInk() {
+    const t = $('.tab[aria-selected="true"]'); if (!t) return;
+    ink.style.left = t.offsetLeft + 'px'; ink.style.width = t.offsetWidth + 'px';
+  }
+  function openTab(name) {
+    currentTab = name;
+    $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+    $$('[data-pane]').forEach(p => p.hidden = p.dataset.pane !== name);
+    moveInk();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (name === 'colour') requestAnimationFrame(drawWheel);
+    if (name === 'schedule') loadSchedules();
+    if (name === 'music') renderUsage();
+    savePrefs();
+  }
+  $$('.tab').forEach(t => t.addEventListener('click', () => openTab(t.dataset.tab)));
+  let resizeT; window.addEventListener('resize', () => { moveInk(); clearTimeout(resizeT); resizeT = setTimeout(() => { if (currentTab === 'colour') drawWheel(); }, 150); });
+  // a tiny tick on phones that support it
+  document.addEventListener('pointerdown', e => { if (e.target.closest('.tile, .swatch, .power, .tab, .day, .seg button')) navigator.vibrate?.(6); }, { passive: true });
+
+  // ---------------------------------------------------------- start, sign in, polling
+  $$('.bulb-slot').forEach(s => s.appendChild($('#bulb-tpl').content.cloneNode(true)));
+
+  async function refresh() {
+    try { applySnapshot(await api('/api/state')); }
+    catch (e) {
+      if (e.status === 401 || !S) return;
+      S.connected = false; S.error = e.message; renderStatus();
+    }
+  }
+  $('#retry-btn').addEventListener('click', async e => {
+    const btn = e.currentTarget; btn.disabled = true;
+    await refresh(); btn.disabled = false;
+    if (S?.connected) toast('Bulb is online', 'ok');
+  });
+
+  function showStart(message, isError) {
+    if (Music.running) Music.stop(false);
+    FX.stop();
+    $('#app').hidden = true; $('#start').hidden = false;
+    $('#pw').hidden = !needPassword;
+    const btn = $('#start-btn'); btn.disabled = false; btn.textContent = 'Start';
+    $('#start-msg').innerHTML = message ? `<span class="${isError ? 'err' : ''}">${escapeHtml(message)}</span>`
+      : (needPassword ? 'Enter the password you set as APP_PASSWORD in your Lambda.' : '');
+    if (needPassword) setTimeout(() => $('#pw').focus(), 50);
+  }
+  function signOut(message) {
+    token = null; store.set(TOKEN_KEY, null);
+    needPassword = true;
+    showStart(message);
+  }
+
+  $('#start-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = $('#start-btn');
+    btn.disabled = true; btn.textContent = 'Connecting…'; $('#start-msg').innerHTML = '';
+    try {
+      if (needPassword) {
+        const res = await api('/api/login', { password: $('#pw').value });
+        token = res.token || null; store.set(TOKEN_KEY, token);
+        $('#pw').value = ''; needPassword = false;
+      }
+      const snap = await api('/api/state');
+      $('#start').classList.add('leaving');
+      await sleep(280);
+      $('#start').hidden = true; $('#start').classList.remove('leaving'); $('#app').hidden = false;
+      applySnapshot(snap);
+      const prefs = loadPrefs();
+      openTab(prefs.tab && $(`[data-pane="${prefs.tab}"]`) ? prefs.tab : 'colour');
+      requestAnimationFrame(moveInk);
+      startPolling();
+    } catch (err) {
+      if (err.status === 401 && err.data?.login) return showStart('This page has a password. Enter it to continue.');
+      showStart(err.data?.config ? 'Your Lambda needs one more setting: ' + err.message : err.message, true);
+    }
+  });
+
+  function startPolling() {
+    if (pollStarted) return;
+    pollStarted = true;
+    setInterval(() => {
+      if (!S || document.hidden || dragging || Music.running || FX.name) return;
+      // the cloud reports new settings a little late; don't let that snap controls back
+      if (Object.values(lanes).some(l => l.busy) || Date.now() - lastCommandAt < 10000) return;
+      refresh();
+    }, 15000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && S && !$('#app').hidden && !Music.running && !FX.name && Date.now() - lastCommandAt > 10000) refresh();
+    });
+  }
+
+  setGlow([255, 183, 94], 0.7);
+  showStart();
+})();
+</script>
+</body>
+</html>

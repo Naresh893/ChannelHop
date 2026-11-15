@@ -1,0 +1,1675 @@
+diff --git a/bridge/config.py b/bridge/config.py
+index ee5d151..a5a766b 100644
+--- a/bridge/config.py
++++ b/bridge/config.py
+@@ -329,6 +329,8 @@ def _home(h):
+     # lighter home for a slow box (#58): no blur, no soft shadows, a still photo, smaller pictures
+     if isinstance(h.get("lighter"), bool):
+         out["lighter"] = h["lighter"]
++    if isinstance(h.get("airtel_theme"), bool):   # local change: Airtel colours on Classic
++        out["airtel_theme"] = h["airtel_theme"]
+     # "always": the 4K copies on a 4K panel whose interface is drawn at 1080 (#191). false: a 4K screen with a weak chip keeps the 1080 backgrounds (lg/build.py then leaves the 4K copies out)
+     if isinstance(h.get("hi_res"), bool) or h.get("hi_res") == "always":
+         out["hi_res"] = h["hi_res"]
+@@ -389,6 +391,36 @@ def _home(h):
+     out["smart_idle"] = _smart_idle(h.get("smart_idle"))
+     if "inputs" in h:
+         out["inputs"] = _inputs(h.get("inputs"))
++    # local change: the Channels row (set-top box channels, tuned by the launcher's BoxRemote)
++    if "channels" in h:
++        out["channels"] = _channels(h.get("channels"))
++    if isinstance(h.get("channel_input"), str) and h["channel_input"].strip():
++        out["channel_input"] = h["channel_input"].strip()[:200]
++    return out
++
++
++def _channels(raw_list):
++    """local change: home.channels, [{number, name?, image?}], at most 8, numbers of 1 to 5 digits."""
++    if not isinstance(raw_list, list):
++        return []
++    out = []
++    for item in raw_list:
++        if not isinstance(item, dict):
++            continue
++        num = str(item.get("number") if item.get("number") is not None else "").strip()
++        if not re.fullmatch(r"[0-9]{1,5}", num) or any(c["number"] == num for c in out):
++            continue
++        entry = {"number": num}
++        name = str(item.get("name") or "").strip()[:40]
++        if name:
++            entry["name"] = name
++        img = item.get("image")
++        if isinstance(img, str) and (re.fullmatch(r"https?://[^\s\"'`$]+", img.strip())
++                                     or re.fullmatch(r"logos/[a-z0-9-]{1,40}\.(png|svg|webp|jpg)", img.strip())):
++            entry["image"] = img.strip()
++        out.append(entry)
++        if len(out) >= 8:
++            break
+     return out
+ 
+ 
+diff --git a/tv-home/android/app/src/main/java/app/couchtv/launcher/App.kt b/tv-home/android/app/src/main/java/app/couchtv/launcher/App.kt
+index 89d2a4c..d83d4eb 100644
+--- a/tv-home/android/app/src/main/java/app/couchtv/launcher/App.kt
++++ b/tv-home/android/app/src/main/java/app/couchtv/launcher/App.kt
+@@ -8,5 +8,6 @@ class App : Application() {
+         super.onCreate()
+         CrashGuard.install(this)
+         TclPlaceholderInput.enableIfTcl(this)   // TCL only, issue #94
++        Resume.start(this)   // local change: the TV turns on where it was left (Resume.kt)
+     }
+ }
+diff --git a/tv-home/android/app/src/main/java/app/couchtv/launcher/BoxRemote.kt b/tv-home/android/app/src/main/java/app/couchtv/launcher/BoxRemote.kt
+new file mode 100644
+index 0000000..fad5448
+--- /dev/null
++++ b/tv-home/android/app/src/main/java/app/couchtv/launcher/BoxRemote.kt
+@@ -0,0 +1,288 @@
++package app.couchtv.launcher
++
++import android.content.Context
++import android.util.Base64
++import android.util.Log
++import org.json.JSONObject
++import java.io.ByteArrayInputStream
++import java.io.ByteArrayOutputStream
++import java.io.InputStream
++import java.io.OutputStream
++import java.net.InetSocketAddress
++import java.net.Socket
++import java.security.KeyFactory
++import java.security.Principal
++import java.security.PrivateKey
++import java.security.cert.CertificateFactory
++import java.security.cert.X509Certificate
++import java.security.spec.PKCS8EncodedKeySpec
++import java.util.concurrent.atomic.AtomicBoolean
++import javax.net.ssl.SSLContext
++import javax.net.ssl.SSLSocket
++import javax.net.ssl.TrustManager
++import javax.net.ssl.X509ExtendedKeyManager
++import javax.net.ssl.X509TrustManager
++
++/**
++ * local change: tunes a channel on a set-top box (here Airtel's Xstream IPTV box) over the Android TV
++ * Remote protocol v2, the one Google's phone remote uses: TLS on port 6466 with a client certificate
++ * the box accepted once (paired from a computer with androidtvremote2), and small protobuf messages.
++ *
++ * Airtel's TV app takes only the first number key as a key press; the rest of the number goes in as
++ * text a moment later, once its number box is open. So: Home (back to Airtel's own TV app, out of
++ * any app "channel"), the first digit, then the rest as text. One tune at a time; each opens its
++ * own connection.
++ *
++ * The box's address, certificate and key come from apply.sh ("box_b64": base64 JSON
++ * {host, cert, key}, key as PKCS#8 PEM) and live in this app's private settings only.
++ */
++object BoxRemote {
++    private const val TAG = "couch-tv"
++    private const val PORT = 6466
++    private const val PREF = "box_remote"
++    private const val KEY_HOME = 3
++    private const val KEY_0 = 7
++    private const val KEY_WAKEUP = 224
++    private const val SHORT = 3
++    // ping, keys, input method, power, volume, app links (what androidtvremote2 asks for)
++    private const val FEATURES = 1 or 2 or 4 or 32 or 64 or 512
++
++    private val busy = AtomicBoolean(false)
++
++    fun readExtras(c: Context, b64: String?) {
++        if (b64 == null) return
++        val e = c.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()
++        if (b64.isBlank() || b64 == "none") { e.clear().apply(); return }
++        try {
++            val j = JSONObject(String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8))
++            val host = j.getString("host").trim()
++            if (!Regex("^[0-9A-Za-z.:-]{1,64}$").matches(host)) return
++            loadCert(j.getString("cert")); loadKey(j.getString("key"))   // refuse anything that does not parse
++            e.putString("host", host).putString("cert", j.getString("cert")).putString("key", j.getString("key")).apply()
++        } catch (x: Exception) {
++            Log.w(TAG, "box remote: settings refused: $x")
++        }
++    }
++
++    fun ready(c: Context): Boolean = c.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("host", null) != null
++
++    /** Starts tuning in the background. False: no box set up, a bad number, or a tune still running. */
++    fun tune(c: Context, number: String, done: (Boolean) -> Unit): Boolean {
++        if (!Regex("^[0-9]{1,5}$").matches(number)) return false
++        val p = c.getSharedPreferences(PREF, Context.MODE_PRIVATE)
++        val host = p.getString("host", null) ?: return false
++        val cert = p.getString("cert", null) ?: return false
++        val key = p.getString("key", null) ?: return false
++        if (!busy.compareAndSet(false, true)) return false
++        Thread {
++            var ok = false
++            try {
++                ok = Session(host, loadCert(cert), loadKey(key)).use { it.tune(number) }
++            } catch (x: Exception) {
++                Log.w(TAG, "box remote: tune $number failed: $x")
++            } finally {
++                busy.set(false)
++                done(ok)
++            }
++        }.apply { isDaemon = true; name = "box-remote" }.start()
++        return true
++    }
++
++    private fun loadCert(pem: String): X509Certificate =
++        CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(pem.toByteArray())) as X509Certificate
++
++    private fun loadKey(pem: String): PrivateKey {
++        val body = pem.replace(Regex("-----[A-Z ]+-----"), "").replace(Regex("\\s"), "")
++        return KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(Base64.decode(body, Base64.DEFAULT)))
++    }
++
++    private class Session(host: String, private val cert: X509Certificate, private val key: PrivateKey) : AutoCloseable {
++        private val socket: SSLSocket
++        private val out: OutputStream
++        private val lock = Object()
++        @Volatile private var active = false
++        @Volatile private var closed = false
++        @Volatile private var imeCounter = 0L
++        @Volatile private var fieldCounter = 0L
++        @Volatile private var imeEdits = 0
++
++        init {
++            val km = object : X509ExtendedKeyManager() {
++                override fun getClientAliases(t: String?, i: Array<out Principal>?) = arrayOf("c")
++                override fun chooseClientAlias(t: Array<out String>?, i: Array<out Principal>?, s: Socket?) = "c"
++                override fun getServerAliases(t: String?, i: Array<out Principal>?) = null
++                override fun chooseServerAlias(t: String?, i: Array<out Principal>?, s: Socket?) = null
++                override fun getCertificateChain(a: String?) = arrayOf(cert)
++                override fun getPrivateKey(a: String?) = key
++            }
++            // the box's own certificate is self-signed; this only ever talks to the address apply.sh set
++            val tm = object : X509TrustManager {
++                override fun checkClientTrusted(c: Array<out X509Certificate>?, a: String?) {}
++                override fun checkServerTrusted(c: Array<out X509Certificate>?, a: String?) {}
++                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
++            }
++            val ctx = SSLContext.getInstance("TLS")
++            ctx.init(arrayOf(km), arrayOf<TrustManager>(tm), null)
++            val s = ctx.socketFactory.createSocket() as SSLSocket
++            s.connect(InetSocketAddress(host, PORT), 4000)
++            s.soTimeout = 30000
++            s.startHandshake()
++            socket = s
++            out = s.outputStream
++            Thread { readLoop(s.inputStream) }.apply { isDaemon = true; name = "box-remote-read" }.start()
++        }
++
++        fun tune(number: String): Boolean {
++            if (!waitFor(6000) { active }) { Log.w(TAG, "box remote: the box did not get ready"); return false }
++            key(KEY_WAKEUP); pause(300)
++            key(KEY_HOME); pause(1500)
++            // Airtel's box opens its number box on the first digit but never reports it (no IME
++            // batch edit arrives), and number keys after the first are dropped; the rest typed as
++            // text goes in (tested on the box, 14 Nov 2026). Counters stay 0 unless the box sends some.
++            key(KEY_0 + (number[0] - '0'))
++            val rest = number.substring(1)
++            if (rest.isNotEmpty()) {
++                pause(800)
++                text(rest)
++            }
++            pause(1200)
++            Log.i(TAG, "box remote: tuned $number")
++            return !closed
++        }
++
++        private fun pause(ms: Long) = Thread.sleep(ms)
++
++        private fun waitFor(ms: Long, cond: () -> Boolean): Boolean {
++            val end = System.currentTimeMillis() + ms
++            while (System.currentTimeMillis() < end) {
++                if (cond()) return true
++                if (closed) return false
++                Thread.sleep(50)
++            }
++            return cond()
++        }
++
++        private fun key(code: Int) = send(msg(10, Pb().v(1, code.toLong()).v(2, SHORT.toLong())))
++
++        private fun text(t: String) {
++            val obj = Pb().v(1, (t.length - 1).toLong()).v(2, (t.length - 1).toLong()).s(3, t)
++            val edit = Pb().v(1, 1).m(2, obj)
++            send(msg(21, Pb().v(1, imeCounter).v(2, fieldCounter).m(3, edit)))
++        }
++
++        private fun msg(field: Int, body: Pb): ByteArray = Pb().m(field, body).bytes()
++
++        private fun send(b: ByteArray) {
++            synchronized(lock) {
++                val o = ByteArrayOutputStream()
++                Pb.varint(o, b.size.toLong())
++                o.write(b)
++                out.write(o.toByteArray())
++                out.flush()
++            }
++        }
++
++        private fun readLoop(input: InputStream) {
++            try {
++                while (!closed) {
++                    val len = Pb.readVarint(input) ?: break
++                    if (len < 0 || len > 1 shl 20) break
++                    val buf = ByteArray(len.toInt())
++                    var n = 0
++                    while (n < buf.size) { val r = input.read(buf, n, buf.size - n); if (r < 0) throw java.io.EOFException(); n += r }
++                    handle(buf)
++                }
++            } catch (_: Exception) {
++            } finally {
++                closed = true
++            }
++        }
++
++        private fun handle(b: ByteArray) {
++            Pb.parse(b) { field, _, value, raw ->
++                when (field) {
++                    1 -> {   // remote_configure: answer with what both sides can do
++                        var supported = 0L
++                        raw?.let { Pb.parse(it) { f, _, v, _ -> if (f == 1) supported = v } }
++                        val info = Pb().v(3, 1).s(4, "1").s(5, "atvremote").s(6, "1.0.0")
++                        send(msg(1, Pb().v(1, FEATURES.toLong() and supported).m(2, info)))
++                    }
++                    2 -> { send(msg(2, Pb().v(1, FEATURES.toLong()))); active = true }   // remote_set_active
++                    8 -> {   // remote_ping_request
++                        var v1 = 0L
++                        raw?.let { Pb.parse(it) { f, _, v, _ -> if (f == 1) v1 = v } }
++                        send(msg(9, Pb().v(1, v1)))
++                    }
++                    21 -> {   // remote_ime_batch_edit: an input box opened (Airtel's number box)
++                        raw?.let { Pb.parse(it) { f, _, v, _ -> if (f == 1) imeCounter = v else if (f == 2) fieldCounter = v } }
++                        imeEdits++
++                    }
++                }
++            }
++        }
++
++        override fun close() {
++            closed = true
++            try { socket.close() } catch (_: Exception) {}
++        }
++    }
++
++    /** Just enough protobuf: varints, strings and nested messages; proto3 leaves out zero numbers. */
++    private class Pb {
++        private val o = ByteArrayOutputStream()
++        fun v(field: Int, value: Long): Pb { if (value != 0L) { varint(o, (field shl 3).toLong()); varint(o, value) }; return this }
++        fun s(field: Int, value: String): Pb = raw(field, value.toByteArray(Charsets.UTF_8))
++        fun m(field: Int, value: Pb): Pb = raw(field, value.bytes())
++        private fun raw(field: Int, b: ByteArray): Pb { varint(o, ((field shl 3) or 2).toLong()); varint(o, b.size.toLong()); o.write(b); return this }
++        fun bytes(): ByteArray = o.toByteArray()
++
++        companion object {
++            fun varint(o: ByteArrayOutputStream, value: Long) {
++                var v = value
++                while (true) {
++                    if (v and 0x7FL.inv() == 0L) { o.write(v.toInt()); return }
++                    o.write(((v and 0x7F) or 0x80).toInt())
++                    v = v ushr 7
++                }
++            }
++
++            fun readVarint(i: InputStream): Long? {
++                var shift = 0
++                var result = 0L
++                while (shift < 64) {
++                    val b = i.read()
++                    if (b < 0) return null
++                    result = result or ((b and 0x7F).toLong() shl shift)
++                    if (b and 0x80 == 0) return result
++                    shift += 7
++                }
++                return null
++            }
++
++            /** Calls back with (field, wire type, varint value, bytes of a length-delimited field). */
++            fun parse(b: ByteArray, each: (Int, Int, Long, ByteArray?) -> Unit) {
++                var p = 0
++                fun vr(): Long {
++                    var shift = 0; var r = 0L
++                    while (true) {
++                        val x = b[p++].toInt() and 0xFF
++                        r = r or ((x and 0x7F).toLong() shl shift)
++                        if (x and 0x80 == 0) return r
++                        shift += 7
++                    }
++                }
++                while (p < b.size) {
++                    val tag = vr()
++                    val field = (tag ushr 3).toInt()
++                    when (val wt = (tag and 7).toInt()) {
++                        0 -> each(field, wt, vr(), null)
++                        2 -> { val n = vr().toInt(); val r = b.copyOfRange(p, p + n); p += n; each(field, wt, 0, r) }
++                        1 -> p += 8
++                        5 -> p += 4
++                        else -> return
++                    }
++                }
++            }
++        }
++    }
++}
+diff --git a/tv-home/android/app/src/main/java/app/couchtv/launcher/FireWatch.kt b/tv-home/android/app/src/main/java/app/couchtv/launcher/FireWatch.kt
+index 62b64fd..4611b0b 100644
+--- a/tv-home/android/app/src/main/java/app/couchtv/launcher/FireWatch.kt
++++ b/tv-home/android/app/src/main/java/app/couchtv/launcher/FireWatch.kt
+@@ -58,7 +58,7 @@ class FireWatch : AccessibilityService() {
+ 
+     /** Xiaomi TVs only (issue #54): every other TV's Home key is left exactly as before. */
+     override fun onKeyEvent(event: KeyEvent): Boolean {
+-        if (!isXiaomi()) return false
++        if (!catchesHomeKey()) return false
+         val homeKey = event.keyCode == KeyEvent.KEYCODE_HOME ||
+             (event.keyCode == KeyEvent.KEYCODE_BUTTON_5 && event.scanCode == XIAOMI_MI_SCAN)
+         if (!homeKey || CrashGuard.standingAside(this)) return false
+@@ -69,7 +69,7 @@ class FireWatch : AccessibilityService() {
+     override fun onServiceConnected() {
+         connected = true
+         // Key filtering is switched on at run time and only on Xiaomi, so no other TV sees key presses here.
+-        if (isXiaomi()) runCatching {
++        if (catchesHomeKey()) runCatching {
+             serviceInfo = serviceInfo.also { it.flags = it.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS }
+         }
+         homeClasses = homeActivitiesOf(this)
+@@ -182,6 +182,7 @@ class FireWatch : AccessibilityService() {
+         override fun onReceive(c: Context, i: Intent) {
+             if (i.action == Intent.ACTION_MY_PACKAGE_REPLACED) CrashGuard.reset(c)   // a new version gets a fresh try
+             runCatching { ensure(c) }
++            if (i.action == Intent.ACTION_BOOT_COMPLETED) Resume.afterBoot(c)   // local change: back where the TV was left
+         }
+     }
+ 
+@@ -238,6 +239,10 @@ class FireWatch : AccessibilityService() {
+         // MiTV-MOOQ1's Mi-logo key reports BUTTON_5 with this scan code, not KEYCODE_HOME.
+         private const val XIAOMI_MI_SCAN = 580
+         private fun isXiaomi() = Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
++        // local change: this Haier Google TV too. Its Home key always starts the Google home first and
++        // the window watch then puts couch-tv back, which showed the Google home for a moment (or left
++        // it there when couch-tv was restarting). Caught here, the Google home is never started.
++        private fun catchesHomeKey() = isXiaomi() || Build.MANUFACTURER.equals("Haier", ignoreCase = true)
+         const val GOOGLE_TV_HOME = "com.google.android.apps.tv.launcherx"
+         const val ANDROID_TV_HOME = "com.google.android.tvlauncher"
+         /** Bell's Fibe TV app (Bell Streamer, Canada): its MainTvActivity is the box's HOME, and also its live TV. */
+diff --git a/tv-home/android/app/src/main/java/app/couchtv/launcher/Lights.kt b/tv-home/android/app/src/main/java/app/couchtv/launcher/Lights.kt
+new file mode 100644
+index 0000000..faccdd0
+--- /dev/null
++++ b/tv-home/android/app/src/main/java/app/couchtv/launcher/Lights.kt
+@@ -0,0 +1,101 @@
++package app.couchtv.launcher
++
++import android.content.Context
++import android.util.Base64
++import android.util.Log
++import org.json.JSONObject
++import java.net.HttpURLConnection
++import java.net.URL
++import java.util.concurrent.atomic.AtomicBoolean
++
++/**
++ * local change: the Lights quick button. Talks to the household's own bulb service (a Lambda in
++ * front of the Halonix/Tuya bulb): POST /api/power {on}, /api/white {brightness, temp},
++ * /api/colour {h, s, v}, GET /api/state, each with "Authorization: Bearer <token>". The token
++ * comes from POST /api/login {password}; the app signs in again by itself when it is refused.
++ *
++ * The service's address and password come from the household's own sign-in script on their
++ * computer ("light_b64": base64 JSON {url, password}) and live in this app's private settings
++ * only, never in the page. Only those four paths can be called.
++ */
++object Lights {
++    private const val TAG = "couch-tv"
++    private const val PREF = "lights"
++    private val PATHS = setOf("/api/power", "/api/white", "/api/colour", "/api/state")
++    private val busy = AtomicBoolean(false)
++
++    fun readExtras(c: Context, b64: String?) {
++        if (b64 == null) return
++        val e = c.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()
++        if (b64.isBlank() || b64 == "none") { e.clear().apply(); return }
++        try {
++            val j = JSONObject(String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8))
++            val url = j.getString("url").trim().trimEnd('/')
++            if (!Regex("^https://[A-Za-z0-9.-]{1,200}$").matches(url)) return
++            e.putString("url", url).putString("password", j.optString("password", "")).remove("token").apply()
++        } catch (x: Exception) {
++            Log.w(TAG, "lights: settings refused: $x")
++        }
++    }
++
++    fun ready(c: Context): Boolean = c.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("url", null) != null
++
++    /** Sends one command in the background; done(ok, json reply or error text). False: not set up or busy. */
++    fun send(c: Context, path: String, body: String, done: (Boolean, String) -> Unit): Boolean {
++        if (path !in PATHS) return false
++        val p = c.getSharedPreferences(PREF, Context.MODE_PRIVATE)
++        val base = p.getString("url", null) ?: return false
++        val payload = if (path == "/api/state") null else try { JSONObject(body).toString() } catch (_: Exception) { return false }
++        if (!busy.compareAndSet(false, true)) return false
++        Thread {
++            var ok = false
++            var out = ""
++            try {
++                var token = p.getString("token", null)
++                if (token == null) token = login(base, p.getString("password", "") ?: "")?.also { p.edit().putString("token", it).apply() }
++                var r = call(base + path, payload, token)
++                if (r.first == 401) {   // the sign-in ran out: once more with a fresh one
++                    token = login(base, p.getString("password", "") ?: "")?.also { p.edit().putString("token", it).apply() }
++                    r = call(base + path, payload, token)
++                }
++                ok = r.first in 200..299
++                out = r.second
++                if (!ok) Log.w(TAG, "lights: $path answered ${r.first}")
++            } catch (x: Exception) {
++                Log.w(TAG, "lights: $path failed: $x")
++                out = x.javaClass.simpleName
++            } finally {
++                busy.set(false)
++                done(ok, out)
++            }
++        }.apply { isDaemon = true; name = "lights" }.start()
++        return true
++    }
++
++    private fun login(base: String, password: String): String? {
++        if (password.isEmpty()) return null
++        val r = call("$base/api/login", JSONObject().put("password", password).toString(), null)
++        if (r.first !in 200..299) { Log.w(TAG, "lights: sign-in refused (${r.first})"); return null }
++        return try { JSONObject(r.second).optString("token").takeIf { it.isNotEmpty() } } catch (_: Exception) { null }
++    }
++
++    private fun call(url: String, body: String?, token: String?): Pair<Int, String> {
++        val c = URL(url).openConnection() as HttpURLConnection
++        try {
++            c.connectTimeout = 8000
++            c.readTimeout = 15000
++            c.requestMethod = if (body == null) "GET" else "POST"
++            if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
++            if (body != null) {
++                c.doOutput = true
++                c.setRequestProperty("Content-Type", "application/json")
++                c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
++            }
++            val code = c.responseCode
++            val text = (if (code >= 400) c.errorStream else c.inputStream)?.bufferedReader()?.use { it.readText() } ?: ""
++            return code to text.take(20000)
++        } finally {
++            c.disconnect()
++        }
++    }
++}
+diff --git a/tv-home/android/app/src/main/java/app/couchtv/launcher/MainActivity.kt b/tv-home/android/app/src/main/java/app/couchtv/launcher/MainActivity.kt
+index fc33d92..0a85522 100644
+--- a/tv-home/android/app/src/main/java/app/couchtv/launcher/MainActivity.kt
++++ b/tv-home/android/app/src/main/java/app/couchtv/launcher/MainActivity.kt
+@@ -142,7 +142,8 @@ class MainActivity : Activity() {
+ 
+     override fun onNewIntent(intent: Intent) {
+         super.onNewIntent(intent)
+-        if (intent.hasExtra("bridge") || intent.hasExtra("config_b64")) {
++        // (local change: the box remote's and the bulb service's sign-ins arrive the same way)
++        if (intent.hasExtra("bridge") || intent.hasExtra("config_b64") || intent.hasExtra("box_b64") || intent.hasExtra("light_b64")) {
+             readExtras(intent)
+             pageReady = false
+             offline = false
+@@ -259,6 +260,8 @@ class MainActivity : Activity() {
+         }
+         e.apply()
+         HomeAssistant.readExtras(this, i)   // smart home ("ha_b64"), kept apart from the page's settings
++        BoxRemote.readExtras(this, i.getStringExtra("box_b64"))   // local change: the set-top box remote, kept apart too
++        Lights.readExtras(this, i.getStringExtra("light_b64"))   // local change: the bulb service, kept apart too
+     }
+ 
+     // ---------------------------------------------------------------- finding the bridge
+@@ -700,6 +703,51 @@ class MainActivity : Activity() {
+             return start(i)
+         }
+ 
++        /**
++         * local change: the screensavers on this TV, so Home settings can switch between them
++         * (here SkyClock and Google TV's own). Android's test pattern and the older Chromecast
++         * backdrop, a second copy of Google's, are left out. JSON: {current, list: [{id, label}]}.
++         */
++        @JavascriptInterface
++        fun screensavers(): String {
++            val list = JSONArray()
++            try {
++                for (r in packageManager.queryIntentServices(Intent("android.service.dreams.DreamService"), 0)) {
++                    val si = r.serviceInfo ?: continue
++                    if (si.packageName == "com.android.dreams.basic" || si.packageName == "com.google.android.backdrop") continue
++                    list.put(JSONObject().apply {
++                        put("id", android.content.ComponentName(si.packageName, si.name).flattenToShortString())
++                        put("label", r.loadLabel(packageManager).toString())
++                    })
++                }
++            } catch (e: Exception) {
++                android.util.Log.w("couch-tv", "screensavers failed: $e")
++            }
++            val cur = Settings.Secure.getString(contentResolver, "screensaver_components")
++                ?.split(",")?.firstOrNull()?.let { android.content.ComponentName.unflattenFromString(it) }
++            return JSONObject().apply {
++                put("current", cur?.flattenToShortString() ?: "")
++                put("list", list)
++            }.toString()
++        }
++
++        /** local change: makes one of the screensavers above the one the TV shows when idle. */
++        @JavascriptInterface
++        fun setScreensaver(id: String): Boolean {
++            val want = android.content.ComponentName.unflattenFromString(id) ?: return false
++            return try {
++                val known = packageManager.queryIntentServices(Intent("android.service.dreams.DreamService"), 0)
++                    .any { it.serviceInfo?.packageName == want.packageName && it.serviceInfo?.name == want.className }
++                if (!known) return false
++                Settings.Secure.putString(contentResolver, "screensaver_components", want.flattenToShortString())
++                Settings.Secure.putInt(contentResolver, "screensaver_enabled", 1)
++                true
++            } catch (e: Exception) {
++                android.util.Log.w("couch-tv", "setScreensaver refused: $e")
++                false
++            }
++        }
++
+         /**
+          * The TV's own inputs for couch-tv's Input menu (#30): every HDMI port and other passthrough
+          * input Android lists, with the TV's own name for it (a renamed port, or "HDMI 3 (eARC)" where
+@@ -742,11 +790,46 @@ class MainActivity : Activity() {
+         @JavascriptInterface
+         fun openInput(id: String): Boolean {
+             if (id.isBlank()) return false
++            Resume.remember(this@MainActivity, "input", id)   // local change: the TV turns on where it was left
+             val view = Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(id))
+             if (packageManager.resolveActivity(view, 0) != null) return start(view)
+             return inputsIntent()?.let { start(it) } ?: false
+         }
+ 
++        /** local change: "When the TV turns on" (Resume.kt): true = the last used input or app, false = this home. */
++        @JavascriptInterface
++        fun resumeLast(): Boolean = Resume.enabled(this@MainActivity)
++
++        @JavascriptInterface
++        fun setResumeLast(on: Boolean) = Resume.setEnabled(this@MainActivity, on)
++
++        /** local change: whether the bulb service is set up (Lights), for the Lights quick button. */
++        @JavascriptInterface
++        fun hasLights(): Boolean = Lights.ready(this@MainActivity)
++
++        /** local change: one Lights command; window.tv.lightDone(ok, reply) after. False: not sent. */
++        @JavascriptInterface
++        fun lightCommand(path: String, body: String): Boolean = Lights.send(this@MainActivity, path, body) { ok, reply ->
++            main.post { js("window.tv && window.tv.lightDone && window.tv.lightDone(" + ok + "," + JSONObject.quote(reply) + ")") }
++        }
++
++        /** local change: whether a set-top box remote is set up (BoxRemote), for the Channels row. */
++        @JavascriptInterface
++        fun hasChannelBox(): Boolean = BoxRemote.ready(this@MainActivity)
++
++        /**
++         * local change: the Channels row. Switches the TV to the box's input (id, may be blank) and
++         * tunes the box to the channel number in the background; window.tv.channelDone(ok) after.
++         */
++        @JavascriptInterface
++        fun tuneChannel(inputId: String, number: String): Boolean {
++            val started = BoxRemote.tune(this@MainActivity, number) { ok ->
++                main.post { js("window.tv && window.tv.channelDone && window.tv.channelDone(" + ok + ")") }
++            }
++            if (started && inputId.isNotBlank()) openInput(inputId)
++            return started
++        }
++
+         /** The TV's Bluetooth or network settings, for the Input menu (falls back to all Settings). */
+         @JavascriptInterface
+         fun openSettingsScreen(which: String): Boolean {
+@@ -1384,6 +1467,7 @@ class MainActivity : Activity() {
+         // Bell's Fibe app is the home on a Bell Streamer and also its live TV: opened on purpose, it stays (#168).
+         if (pkg == FireWatch.BELL_FIBE_HOME) FireWatch.fibeOpenedNow()
+         if (pkg == "com.android.tv.settings") return startSettings(i)
++        Resume.remember(this, "app", pkg)   // local change: the TV turns on where it was left
+         return start(i)
+     }
+ 
+diff --git a/tv-home/android/app/src/main/java/app/couchtv/launcher/Resume.kt b/tv-home/android/app/src/main/java/app/couchtv/launcher/Resume.kt
+new file mode 100644
+index 0000000..e71d69f
+--- /dev/null
++++ b/tv-home/android/app/src/main/java/app/couchtv/launcher/Resume.kt
+@@ -0,0 +1,72 @@
++package app.couchtv.launcher
++
++import android.content.BroadcastReceiver
++import android.content.Context
++import android.content.Intent
++import android.content.IntentFilter
++import android.media.tv.TvContract
++import android.os.Handler
++import android.os.Looper
++import android.util.Log
++
++/**
++ * local change: "When the TV turns on: last used". The home remembers the last input (Airtel's box
++ * on HDMI 1, a channel from the Channels row) or app it opened, and when the TV wakes from standby
++ * or finishes starting it opens that again, so the TV comes back where it was instead of on a home
++ * screen. Off in Home settings (Look and scenes) puts the home back as the first screen.
++ */
++object Resume {
++    private const val TAG = "couch-tv"
++    private const val PREF = "resume"
++    private const val WAKE_DELAY_MS = 3_000L    // let the TV's own wake-up (and the Home button watch) settle first
++    private const val BOOT_DELAY_MS = 25_000L   // after a restart the inputs take a while to come up
++    private val main = Handler(Looper.getMainLooper())
++    private var registered = false
++
++    private fun prefs(c: Context) = c.getSharedPreferences(PREF, Context.MODE_PRIVATE)
++
++    fun enabled(c: Context): Boolean = prefs(c).getBoolean("on", true)
++    fun setEnabled(c: Context, on: Boolean) { prefs(c).edit().putBoolean("on", on).apply() }
++
++    /** What the home just opened: "input" + a TV input id, or "app" + a package name. */
++    fun remember(c: Context, kind: String, id: String) {
++        if (id.isBlank() || id == c.packageName || id == "com.android.tv.settings") return
++        prefs(c).edit().putString("kind", kind).putString("id", id).putLong("at", System.currentTimeMillis()).apply()
++    }
++
++    /** The home itself came forward on purpose (Home pressed): the TV turns on where it was left anyway. */
++    fun start(c: Context) {
++        if (registered) return
++        registered = true
++        val app = c.applicationContext
++        val f = IntentFilter(Intent.ACTION_SCREEN_ON)
++        app.registerReceiver(object : BroadcastReceiver() {
++            override fun onReceive(ctx: Context, i: Intent) { later(app, WAKE_DELAY_MS) }
++        }, f)
++    }
++
++    fun afterBoot(c: Context) = later(c.applicationContext, BOOT_DELAY_MS)
++
++    private fun later(c: Context, ms: Long) {
++        main.removeCallbacksAndMessages(this)
++        main.postAtTime({ open(c) }, this, android.os.SystemClock.uptimeMillis() + ms)
++    }
++
++    private fun open(c: Context) {
++        if (!enabled(c) || CrashGuard.standingAside(c)) return
++        val p = prefs(c)
++        val kind = p.getString("kind", null) ?: return
++        val id = p.getString("id", null) ?: return
++        val i = when (kind) {
++            "input" -> Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(id))
++            "app" -> c.packageManager.getLeanbackLaunchIntentForPackage(id) ?: c.packageManager.getLaunchIntentForPackage(id)
++            else -> null
++        } ?: return
++        try {
++            c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
++            Log.i(TAG, "resume: opened the last used $kind")
++        } catch (e: Exception) {
++            Log.w(TAG, "resume: could not open the last used $kind: $e")
++        }
++    }
++}
+diff --git a/tv-home/tools/lights-signin.py b/tv-home/tools/lights-signin.py
+new file mode 100644
+index 0000000..f3f7ae8
+--- /dev/null
++++ b/tv-home/tools/lights-signin.py
+@@ -0,0 +1,76 @@
++#!/usr/bin/env python3
++"""local change: sign the TV home's Lights button in to the household's bulb service.
++
++Run it yourself on this computer (it asks for the password and does not show or save it here):
++    TV_IP=192.168.1.50 .venv/bin/python tv-home/tools/lights-signin.py
++
++It checks the password with the service first, then hands the service's address and the password
++to the home app on the TV, which keeps them in its own private settings (Lights.kt) and signs in
++again by itself when needed. To take the Lights button's sign-in off the TV:
++    TV_IP=192.168.1.50 .venv/bin/python tv-home/tools/lights-signin.py --forget
++"""
++import base64
++import getpass
++import json
++import os
++import subprocess
++import sys
++import urllib.error
++import urllib.request
++
++URL = os.environ.get("LIGHTS_URL", "")
++HERE = os.path.dirname(os.path.abspath(__file__))
++HOME_ACT = "app.couchtv.launcher/.MainActivity"
++
++
++def tv(*args):
++    return subprocess.run([sys.executable, os.path.join(HERE, "tvadb.py"), *args], check=True,
++                          capture_output=True, text=True).stdout
++
++
++def ask_password():
++    """A Mac password box (the typing is hidden and never printed); a terminal prompt elsewhere."""
++    if sys.platform == "darwin" and "--terminal" not in sys.argv:
++        script = ('display dialog "Type the password of your Halonix bulb service. It goes only to the TV." '
++                  'with title "TV Lights sign-in" default answer "" with hidden answer '
++                  'buttons {"Cancel", "Sign in"} default button "Sign in"')
++        r = subprocess.run(["osascript", "-e", script, "-e", "text returned of result"],
++                           capture_output=True, text=True)
++        return r.stdout.rstrip("\n") if r.returncode == 0 else ""
++    return getpass.getpass("Bulb service password (not shown): ")
++
++
++def send(blob):
++    tv("shell", f"am start -n {HOME_ACT} --es light_b64 {blob}")
++
++
++def main():
++    if not os.environ.get("TV_IP"):
++        sys.exit("Set TV_IP first, for example: TV_IP=192.168.1.50")
++    if not URL and "--forget" not in sys.argv:
++        sys.exit("Set LIGHTS_URL to your bulb service's address first (it must offer /api/login).")
++    if "--forget" in sys.argv:
++        send("none")
++        print("The Lights sign-in is off the TV.")
++        return
++    pw = ask_password()
++    if not pw:
++        sys.exit("No password typed. Nothing was sent to the TV.")
++    req = urllib.request.Request(URL.rstrip("/") + "/api/login", data=json.dumps({"password": pw}).encode(),
++                                 headers={"Content-Type": "application/json"}, method="POST")
++    try:
++        with urllib.request.urlopen(req, timeout=20) as r:
++            ok = bool(json.loads(r.read().decode() or "{}").get("token"))
++    except urllib.error.HTTPError as e:
++        sys.exit(f"The bulb service refused that password ({e.code}). Nothing was sent to the TV.")
++    except Exception as e:
++        sys.exit(f"Could not reach the bulb service ({type(e).__name__}). Nothing was sent to the TV.")
++    if not ok:
++        sys.exit("The bulb service gave no sign-in. Nothing was sent to the TV.")
++    blob = base64.b64encode(json.dumps({"url": URL.rstrip("/"), "password": pw}).encode()).decode()
++    send(blob)
++    print("Signed in. The Lights button is on the TV's home now (top right, next to Input).")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tv-home/web/airtel-channels.js b/tv-home/web/airtel-channels.js
+new file mode 100644
+index 0000000..82337b0
+--- /dev/null
++++ b/tv-home/web/airtel-channels.js
+@@ -0,0 +1,4 @@
++// local change: Airtel's channel list (numbers, names, SD/HD, genre, logo link), taken from
++// https://www.airtel.in/plans/dth/all-channel-list on 14 Nov 2026. The Xstream IPTV box uses the
++// same numbers (754 and 755 checked on the box). Logos load from Airtel's own image server.
++window.AIRTEL_CHANNELS = [["125","Dangal Tv","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Dangal%20TV-min.png"],["164","Star World Premiere HD","HD","English",""],["165","STAR WORLD","SD","Entertainment",""],["166","Star World HD","HD","Entertainment",""],["168","ZEE CAFE","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ZEE-CAFE.png"],["169","ZEE CAFE HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ZCafe_HD%20orange.png"],["173","COLORS INFINITY","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/COLORS-INFINITY.png"],["174","COLORS INFINITY HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/COLORS-INFINITY-hd.png"],["175","Comedy Central","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Comedy-Central.png"],["177","Disney International HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Disney-International-HD.png"],["178","TV5 Monde","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV5-Monde-Asia_LCN-178_264x144.png"],["243","STAR MOVIES","SD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-MOVIES.png"],["244","Star Movies HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-MOVIES-hd.png"],["247","PIX","SD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PIX-SD.jpg"],["248","Sony Pix HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sony-Pix-HD.jpg"],["249","Movies Now","SD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Movies-Now.png"],["250","MOVIES NOW HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MOVIES-NOW-HD.png"],["251","Star Movies Select HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Movies-Select-HD.png"],["252","MN+","SD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MN.png"],["253","Romedy Now","SD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Romedy-Now_LCN-253_264x144.png"],["256","&Flix HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/%26Flix-HD.png"],["261","MNX","SD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MN.png"],["262","MNX HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MNX-hd.png"],["265","&Prive HD","HD","English Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Prive-HD.png"],["277","Star Sports 1","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Sports%201-min.png"],["278","Star Sports 1 HD","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-hd.jpg"],["279","Star Sports 2","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sports_logo_Vertical_SD_1920_x_961_Star-Sports-2.jpg"],["280","Star Sports 2 HD","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-2-hd.jpg"],["283","Star Sports Select 1","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-1.jpg"],["284","Star Sports Select 2","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-2.jpg"],["285","SONY SPORTS TEN 1","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-1.jpg"],["286","SONY SPORTS TEN 1 HD Rs 19","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-hd.jpg"],["287","SONY SPORTS TEN 2","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-2.jpg"],["288","SONY SPORTS TEN 2 HD Rs 17","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-2-hd.jpg"],["291","SONY SPORTS TEN 5 Rs 15","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-5.jpg"],["292","SONY SPORTS TEN 5 HD Rs 19","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-5-hd.jpg"],["293","SPORTS18-1","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sports18.png"],["300","Star Sports Select 1 HD","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-1-hd.jpg"],["301","Star Sports Select 2 HD","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-Select-2-hd.png"],["304","Eurosport","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Eurosport-Logo.png"],["305","Eurosport HD","HD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Eurosport-Logo_LCN-304.png"],["307","1SPORTS","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/1SPORTS.png"],["387","TIMES NOW","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Times-Now.png"],["388","Times Now World HD","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Times-Now-hd.png"],["389","NDTV 24x7","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NDTV.png"],["390","CNN News 18","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNN-News-18.png"],["391","INDIA TODAY","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/India-Today_264x144.png"],["392","India Ahead","SD","English News",""],["393","Republic TV","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Republic-TV.jpg"],["394","Mirror Now","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MIRROR-NOW-LOGO-01.png"],["395","WION","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/WION.jpg"],["396","CNBC TV18","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNBC-TV18.png"],["397","ET NOW","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ET-NOW.png"],["398","NDTV Profit Prime","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NDTV-Profit-Prime.jpg"],["402","CNN International","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNN-International.png"],["403","BBC WORLD NEWS","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/BBC-WORLD-NEWS.png"],["404","Russia Today","SD","English News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/rt-russia-today7572.jpeg"],["408","TLC","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TLC.png"],["409","TLC World HD","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TLC-hd.png"],["410","GOOD TIMES","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GOOD-TiMES-410.jpg"],["413","Zee Zest","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Zest.jpg"],["414","TRAVELXP SD","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TRAVELXP-SD.jpg"],["422","National Geographic Channel","SD","Infotainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/National-Geographic.png"],["424","Fox Life","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/FOX-LIFE.png"],["425","Fox Life HD","HD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Fox-Life-HD.png"],["435","Nat Geo Wild HD","HD","Infotainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nat-Geo-Wild.png"],["462","Udaya comedy","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Udaya-Comedy.jpg"],["464","Cbeebies","SD","Kids","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Cbeebies-01.png"],["472","Kushi TV","SD","Kids","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kushi-TV.jpg"],["473","Chintu TV","SD","Kids","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Chintu%20TV.jpg"],["474","CHUTTI TV","SD","Kids","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/chutti.jpg"],["475","KOCHU TV","SD","Kids","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/kochu.jpg"],["507","VH1","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/VH1.png"],["516","ZEE MARATHI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Marathi.jpg"],["517","Zee Marathi HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-marathi-hd.jpeg"],["518","Colors MARATHI","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors-Marathi.png"],["519","Colors Marathi HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors%20Marathi%20HD.png"],["520","STAR PRAVAH","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/star-pravah.jpeg"],["521","STAR PRAVAH HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Pravah%20HD-min.png"],["522","ZEE YUVA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Yuva.jpg"],["524","Sony Marathi","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sony_MARATHI.jpg"],["525","SUN MARATHI @ FREE","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SUN-MARATHI---1.jpg"],["527","Zee Talkies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Talkies.png"],["528","Zee Talkies HD","HD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Talkies-HD.jpg"],["529","Shemaroo Marathibana @ FREE","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Shemaroo-Marathibana-min.png"],["530","FAKT MARATHI @ FREE","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/FAKT%20Marathi.png"],["531","Pravah Picture","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Pravah-Picture.jpg"],["534","ABP MAJHA","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABP%20Majha.png"],["535","SAAM TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Saam%20TV.png"],["537","News 18 Lokmat","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Lokmat_WB.png"],["538","Zee 24 Taas","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-24-Tass.jpg"],["539","TV9 Marathi","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Marathi.png"],["540","Lokshahi","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Lokshahi%20340.png"],["541","JAI MAHARASHTRA @ FREE","SD","News",""],["545","MAIBOLI","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Maibili-min.png"],["546","Sangeet Marathi","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sangeet%20Marathi-min.jpg"],["548","DD SAHYADRI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Sahyadri_LCN-548_264x144.png"],["555","PTC Punjabi","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ptc-music.jpeg"],["556","Zee Punjabi","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-punjabi.jpeg"],["557","CHARDIKLA TIMETV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Chardikala-Time-TV_LCN-557_264x144.png"],["559","Maha Punjabi","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Maha-Punjabi_%28LCN-559%29.png"],["560","PTC Punjabi Gold","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC-Punjabi%20Gold_LCN-560-min.jpg"],["561","Pitaara TV","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Pitaara%20TV-min.png"],["562","ZEE PUNJABI","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-punjabi.jpeg"],["563","PTC NEWS","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC-News-min.jpg"],["565","Living India News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/living-india-news.jpeg"],["567","MH 1","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MH1_LCN567_160X90.png"],["568","PTC Chak de","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC%20Chakde-min.png"],["569","Tashan","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/9x-Tashan_.png"],["570","Balle Balle","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Balle-Balle_LCN-570_264x144.png"],["571","PUNJABI HITS @FREE","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Punjabi%20Hits-min.png"],["572","DD PUNJABI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Punjabi_LCN-572_264x144.png"],["573","PTC Music","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ptc-music.jpeg"],["574","PTC Simran","SD","Religious","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PTC%20Simran_LCN-574-min.jpg"],["578","COLORS GUJARATI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Gujrati_BB.png"],["582","News18 Gujarati","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Gujrati_WB.png"],["583","TV9 Gujarati","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Gujarati.png"],["584","CNBC Bajar","SD","Business News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CNBC_Bazaar_BB.png"],["585","VTV News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/VTV%20News%20LCN585_264x144.png"],["586","Sandesh News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sandesh%20news.png"],["587","Zee 24 Kalak","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-24-Kalak-min.png"],["588","ABP Asmita","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABP-Asmita_LCN_588_264x144.png"],["589","DD Girnar","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-GIRNAR_264x144.png"],["590","GUJARAT FIRST 24X7 NEWS","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gujarat%20First%20Logo%2024x7%20PNG%20FILE.PNG"],["591","GS TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GS_1%20%280-00-00-00%29_015345-min.png"],["593","COLORS ORIYA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Oriya_BB.png"],["594","Tarang","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Tarang%20TV%20Logo-min.png"],["595","Prarthana TV","SD","Religious","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Prarthana%20TV-min.png"],["596","Zee Sarthak","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Sarthak.jpg"],["597","Star Kiran","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Kiran.jpg"],["599","India News Gujarat","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/India%20News%20Gujarat.jpg"],["600","SIDHARTH TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sidharth%20TV_LCN-600-min.png"],["601","Alankar","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Alankar-min.png"],["602","SIDHARTH GOLD","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sidharth%20Gold_LCN-602-min.png"],["603","News18 Oriya","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Oriya_WB.png"],["604","Kanak News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kanak%20News-min.png"],["605","Kalinga TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalinga-TV_LCN-605_264x144.png"],["607","OTV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/OTV_LCN-607_264x144.png"],["609","ARGUS @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Argus%20News_LCN%20609-min.png"],["611","Nandighosha TV @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nandighosha-TV-611.jpg"],["612","News7@ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NEWS7-Logo-min.png"],["614","TARANG MUSIC","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Tarang%20Music.png"],["616","SIDHARTH BHAKTI","SD","Devotional","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sidharth%20Bhakti_LCN-616-min.png"],["617","DD ORIYA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Oriya_LCN-617_264x144.png"],["622","Zee Salaam","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Salaam-min.png"],["624","Tehzeeb TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Tehzeeb-TV_LCN-624_264x144.png"],["625","News18 JK Himachal","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_JKLH_WB.jpg"],["626","DD Urdu","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-urdu_LCN%20626_264x144.png"],["627","DD Kashir","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Kashir_264x144.png"],["628","Mercy TV @ FREE","SD","FTA",""],["629","Gulistan News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gulistan-News_264x144.png"],["630","AALAMI SAMAY @ FREE","SD","FTA",""],["632","RENGONI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Rengoni-min.png"],["633","RANG","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/rang_LCN-633_264x144.png"],["634","Jonack","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/jonack_LCN634_264x144.png"],["635","Ramdhenu TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Logo_of_Ramdhenu.png"],["636","Pratham Khabar 24X7","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Pratham-Khabar-24X7.png"],["637","ND24-NEWSDAILY.IN @ FREE","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ND24-min.png"],["638","PRAG","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Prag-Logo_basic-300x146.png"],["639","Pratidin Time","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/pratidin-time.png"],["640","News18 Assam North-East","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_North_East-Asam_WB.png"],["641","NEWS LIVE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News_live_LCN-641_logo_264x144.png"],["642","NK TV 24x7 @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NK-TV-PLUS-LOGO_264x144.png"],["643","DY365","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DY365_264x144.png"],["644","Assam Talks","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Assam%20Talks.jpg"],["645","North East Live","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/North-East-Live_LCN-645_264x144.png"],["646","DA NEWS PLUS @ FREE","SD","FTA",""],["647","DD North East","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-North-East_LCN-647_264x144.png"],["648","DD Imphal","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD%20IMPHAL-min.png"],["649","DD Arunprabha","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Arunprabha.jpeg"],["650","HORNBILL TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/HORNBILL.jpg"],["653","Zee Ganga","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Ganga-Final-Logo-Tagline.jpg"],["655","DABANGG","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/dabang-tv.png"],["659","Zee Bihar Jharkhand","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee%20Bihar%20Jharkhand.png"],["660","News18 Bihar Jharkhand","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18-Bihar-JK-WB.png"],["661","BHOJPURI CINEMA TV","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Bhojpuri%20Cinema%20TV_LCN_661_.png"],["662","B4U Bhojpuri","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/B4U%20Bhojpuri.png"],["663","Zee Biskope","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Biskope-Hindi_LOGO_264x144.png"],["665","Filamchi","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Filamchi_LCN%20665.jpg"],["672","DD BIHAR","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Bihar_LCN-669_264x144.png"],["679","Sri Sankara","SD","Religious","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sri-Sankara.png"],["686","CHANNEL WIN","SD","Devotional","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/channel%20win.jpg"],["695","Goodnews TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Goodnews-TV_LCN-695_264x144.png"],["696","Grace TV","SD","FTA",""],["703","ZEE BANGLA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Bangla-min.png"],["704","Zee Bangla HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Bangla-HD.jpg"],["705","COLORS BANGLA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Bangla_BB.png"],["706","Colors Bangla HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/COLORS-BANGLA-hd.png"],["707","Star Jalsha","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Bangla_HD_BB.png"],["708","STAR JALSHA HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Jalsha-hd.jpg"],["709","RUPASHI BANGLA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Rupashi%20Bangla.png"],["710","Sony 8","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-AATH.jpg"],["711","Sun Bangla","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SUN-BANGLA---1.jpg"],["712","AAKASH Aath","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Aaksh-Aath-min.png"],["714","CTVN AKD Plus @ Free","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/CTVN%20AKD%20Plus_s.jpg"],["715","Enterr 10 Bangla","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Enterr10-Bangla-min.png"],["717","Zee Bangla Cinema","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee_Bangla_Cinema_Logo_2022.jpg"],["719","Jalsha Movies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Jalsha%20Movies.png"],["720","JALSHA MOVIES HD","HD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jalsha-Movies-hd.jpg"],["721","Colors Bangla Cinema","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Bangla_Cinema_BB.png"],["723","Zee 24 Ghanta","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee_24_Ghanta.jpg"],["724","ABP ANANDA","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABP-Ananda_LCN_724_264x144.png"],["727","NEWS TIME BANGLA","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News%20Time%20Bangla.png"],["728","Calcutta News @ Free","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Calcutta-News.jpeg"],["729","TV9 BANGLA @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Bangla_%28LCN-729%29.png"],["730","R. BANGLA @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/R-Bangla-min.png"],["735","Dhoom Music","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DHOOM-MUSIC_264x144.png"],["736","Sangeet Bangla","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sangeet%20Bangla.jpg"],["737","Bangla Talkies","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Bangla-Talkies.png"],["738","Star Sports Bangla 1","SD","Sports",""],["739","DD BANGLA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Bangla_LCN-739_264x144.png"],["740","DD Tripura","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD%20Tripura.jpg"],["748","RAJ Digital Plus","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-Digital-Plus---Tamil.png"],["750","Mega TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MEGA-TV_264x144.png"],["751","ZEE TAMIZH","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Tamil.jpg"],["752","Zee Tamil HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Tamil-HD.png"],["753","Puthu Yugam","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PUTHU-YUGAM.png"],["754","Sun TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sun%20TV-min.png"],["755","SUN HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SunTV-HD.jpg"],["756","KTV","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/KTV-min.png"],["757","KTV HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/KTV-HD.jpg"],["758","STAR VIJAY","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Vijay-min.png"],["759","Vijay HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-VIJAY.jpg"],["760","KALAINGAR","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalaignar%20logo.png"],["761","Tamil Naaptol","SD","Others","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/naaptol.jpeg"],["762","Jaya TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jaya-tv_LCN.png"],["763","Colors Tamil","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors-Tamil.png"],["764","Colors Tamil HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Tamil_HD_BB.png"],["765","Raj TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-TV.png"],["766","POLIMER","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Polimer%20TV-min.png"],["767","SIRIPPOLI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sirippoli.png"],["768","MAKKAL TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Makkal-TV.png"],["769","ADITHYA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Adithya.jpg"],["771","Vasanth","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vasanth-TV.png"],["772","VIJAYSUPER","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Vijay-min.png"],["773","Music Zone","SD","FTA",""],["774","Sun Life","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/sun-life.jpg"],["775","Zee Thirai","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Tamil.jpg"],["776","Vendhar TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vendhar%20TV%20Logo.png"],["777","Mega 24","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mega-24.png"],["780","J Movies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/J-Movies.jpg"],["782","News18 Tamil Nadu","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Tamil_Nadu_WB.png"],["783","NEWS 7 TAMIL","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NEWS7-Logo-min.png"],["784","Puthiya Thalaimurai","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Puthiya-Thalaimurai.png"],["785","Kalaignar Seithigal","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/kalaignar-seithigal.png"],["787","Polimer News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Polimer-News.png"],["788","Thanti Tv","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Logo_of_Thanthi_TV.png"],["789","Sun News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SunNews.jpg"],["790","Jaya Plus","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/JAYA-PLUS_LCN-790_264x144.png"],["791","News J","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News-J.png"],["792","SATHIYAMTV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SATHIYAM-TV_1_264x144.png"],["794","Raj News Tamil","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-NEWS-TAMIL.png"],["795","News Tamil 24X7","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-NEWS-TAMIL.png"],["798","D Tamil","SD","Infotainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/D_Tamil.png"],["803","Star Sports 1 Tamil","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-Tamil.jpg"],["804","SONY SPORTS TEN 4 Rs 17","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SONY-SPORTS-TEN-4.jpg"],["805","ISAIARUVI","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ISAI%20ARUVI%20logo.png"],["807","Mega Musiq","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mega-Musiq.png"],["808","Kalaignar Murasu","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalaignar%20Murasu.png"],["809","Sun Music","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sun%20Music-min.png"],["810","Sun Music HD","HD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sun%20Music-HD.jpg"],["811","JAYA MAX","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jaya-MAx_LCN-811_264x144.png"],["812","7S Music","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/7s-Music-logo_160x90.png"],["813","Raj Musix Tamil","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-Musix-Tamil_264x144.png"],["814","Aaseervatham TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Aaseervatham%20TV.jpg"],["815","ANGEL TV","SD","Devotional","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Angel%20TV-min.png"],["816","Madha TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/MADHA-TV_264x144.png"],["817","Nambikkai TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nambikkai-TV_264x144.png"],["818","JOTHI TV","SD","Religious","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jothi-TV_%28LCN-818%29.jpg"],["819","SVBC2 @ FREE","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/svbc-2.png"],["820","DD PODHIGAI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD%20Podhigai.jpg"],["821","Kalvi","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kalvi-TV%20Logo_LCN-821-min.png"],["822","VIJAY TAKKAR","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/VIJAY-TAKKAR.jpg"],["823","SAI TV","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sai-TV.png"],["826","Asianet","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet-min.png"],["827","ASIANET HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ASIANET-HD.jpg"],["828","Surya TV","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-TV.jpg"],["829","Surya HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya%20TV%20HD-min.png"],["830","Mazhavil Manorma","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mazhavil%20Manorama-min.png"],["831","Mazhavil Manorama HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mazhavil-Manorama-HD-min.png"],["832","Zee Keralam","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Keralam.png"],["833","Zee Keralam Hd","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/zee-keralam-HD.png"],["834","Kairali TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kairali%20TV.png"],["835","Asianet Plus","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet%20Plus-min.png"],["836","Amrita TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Amrita_TV-min.png"],["837","Kairali WE","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kairali%20TV.png"],["838","JANAM TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/JAN-TV.png"],["839","KAUMUDY TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kaumudy-TV_LCN-839_264x144.png"],["840","Flowers TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/FLOWERS-TV_264x144.png"],["842","Malayalam Naaptol","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Malayalam-Naaptol_%28LCN-882%29-min.png"],["843","Asianet Movies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet-Movies.jpg"],["845","Surya Movies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-Movies.jpg"],["846","Surya Comedy","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-Comedy.jpg"],["849","Jai Hind","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Jai-Hindi-TV-min.png"],["850","MEDIA ONE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/media-one.jpeg"],["851","Manorama News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Manorama%20News-min.png"],["852","Asianet News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/WB_Logo_Asianet%20News.png"],["853","Mathrubhumi News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Mathrubhumi%20News-min.png"],["854","KAIRALI NEWS","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kairali%20News.png"],["855","News 18 Kerala","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Kerala_WB.png"],["856","RAJ NEWS MALAYALAM","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-News-Malayalam_LCN-856_264x144.png"],["857","Twenty Four","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Twenty-Four_%28LCN-857%29.png"],["863","Surya Music","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Surya-Music-Logo.jpg"],["864","Kappa TV","SD","Music",""],["865","RAJ MUSIX MALAYALAM","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-Musix-Malayalam_LCN-865_264x144.png"],["866","Darshana TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Darshana%20TV%20%28Ch%20No%20-%20866%29.png"],["867","Kite Victers","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kite%20Victers_%28LCN-867%29-min.jpg"],["868","Safari TV","SD","Infotainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Safari-TV_LCN-868_264x144.png"],["869","Shalom","SD","Devotional","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Shalom-TV_LCN-869_264x144.png"],["870","Goodness TV","SD","Devotional","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/goodness-tv.jpeg"],["871","DD Malayalam","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Malayalam_LCN-871_264x144.png"],["872","ATE TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ATE-TV_%28LCN-872%29.png"],["873","Powervision","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Powervision_LCN-873_264x144.png"],["877","Gemini TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini%20TV-min.png"],["878","GEMINI TV HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GeminiTV-HD.png"],["879","ETV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV.png"],["880","ETV HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Etv-HD_LCN-880_264x144.png"],["881","Star MAA TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Maa-min.png"],["882","Star MAA HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-MAA-TV-hd.jpg"],["883","ZEE TELUGU","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Telugu-min.PNG"],["884","Zee Telugu HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Telugu_HD.jpg"],["885","Gemini comedy","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini-comedy.png"],["887","STAR MAA GOLD","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-MAA-GOLD.jpg"],["889","ETV PLUS","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Plus_264x144.png"],["890","Telugu Naaptol","SD","Others","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NAAPTOL-Telugu_LCN-890_264x144.png"],["891","Vissa TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vissa-TV.jpg"],["893","Gemini Life","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vissa-TV.jpg"],["895","Gemini Movies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/GeminiTV.jpg"],["896","Gemini Movies HD","HD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini%20Movies-min.png"],["897","STAR Maa Moviesa","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Maa%20Movies-min.png"],["898","Star Maa Movies HD","HD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-Maa-Moviesa-hd.jpg"],["899","ETV Cinema","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Cinema_264x144.png"],["900","Zee Cinemalu","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Cinemalu.png"],["901","Zee Cinemalu HD","HD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Cinemalu_02-Telugu-HD.jpg"],["904","ETV 2","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV.png"],["905","TV9 Telugu","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Telugu.png"],["906","NTV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/NTV.png"],["907","Sakshi TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Sakshi-TV_LCN-907_264x144.png"],["908","PRIME 9 NEWS","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PRIME-9-NEWS.jpg"],["909","ABN Andhra Jyoti","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ABN-andhra-jyoti.jpeg"],["912","V6 NEWS","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/V6News-min.jpg"],["914","T News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/T%20News-min.png"],["916","ETV Telangana","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Telangana_264x144.png"],["917","VANITHA @ FREE","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vanitha_%28LCN-917%29.png"],["918","10 TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/10-TV_264x144.png"],["920","Raj News Telugu","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-NEWS-TELUGU_264x144.png"],["927","HM TV @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/HMTV_LCN%20927.png"],["928","Star Sports 1 Telugu","SD","Sports","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-telegu.jpg"],["930","GEMINI MUSIC","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini%20Music-min.png"],["931","Gemini Music HD","HD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Gemini-Music-HD.jpg"],["932","STAR Maa Music","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-Maa-Music.jpg"],["935","Raj Musix Telugu","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj%20Musix-Telugu.png"],["938","ETV Life","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV%20Life.png"],["939","ETV Abhiruchi","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ETV-Abhiruchi.png"],["940","SVBC","SD","Religious","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SVBC.png"],["941","SUBHAVARTHA","SD","Devotional","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/SVBC%20TV%20Logo-min.png"],["942","Bhakti TV","SD","Religious","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/bhakti-tv.jpeg"],["943","DIVYAVANI TV","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Divyavani-TV_LCn943_264x144.png"],["945","ASHIRWAD","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Ashirwad.jpg"],["946","DD Yadagiri","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Saptagiri_LCN-947_264x144.png"],["947","DD Saptagiri","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Saptagiri_LCN-947_264x144.png"],["948","Vidya","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vidya.jpeg"],["949","Nipuna","SD","FTA","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Nipuna.png"],["953","UDAYA TV","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Udaya%20TV-min.png"],["954","Udaya HD","HD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/UdayaTV-HD.jpg"],["955","COLORS KANNADA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors-Kannada-min.png"],["956","Colors Kannada HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Kannada_HD_BB.png"],["957","ZEE KANNADA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Kannada.png"],["958","Zee Kannada HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/ZK%20HD%20Logo.png"],["959","STAR SUVARNA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star%20Suvarna.png"],["960","STAR SUVARNA HD","HD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-SUVARNA-hd.jpg"],["961","KASTURI","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Kasthuri%20TV_LCN-961.jpg"],["965","Colors Super","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Super_WB.png"],["966","Kannada Naaptol","SD","Others","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Naaptol_Kannada.png"],["967","SIRIKANNADA ALL TIME @ FREE","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Siri-Kannada_%28LCN-967%29-min.png"],["968","Ayush TV","SD","Lifestyle","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Ayush-tv-logo_264x144.png"],["969","STAR Suvarna Plus","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/STAR-Suvarna-Plus.png"],["970","UDAYA MOVIES","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Udaya-Movies.jpg"],["972","Colors Kannada Cinema","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Colors_Kannada_Cinema_BB.png"],["973","Public Movies","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/PublicMovies_%28LCN-973%29.png"],["974","Star Sports 1 Kannada","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Star-Sports-1-Kannadas.jpg"],["975","Zee Picchar","SD","Movies","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Zee-Picchar-Channel-Logo.jpeg"],["976","TV9 KANNADA","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV9%20Kannada.png"],["978","News18 Kannada","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/N18_Kannada_WB.png"],["979","ASIANET SUVARNA NEWS","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Asianet%20Suvarna%20News_%28LCN-979%29.png"],["980","Power Tv","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Power-TV-984.png"],["981","Public TV","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/public-tv-logo.png"],["982","News 1st","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/News%201st_%28LCN-982%29.png"],["983","Raj News Kannada","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Raj-News-Kannada.png"],["985","Dighvijay 24X7 News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Dighvijay-24x7-News.png"],["986","TV5 KANNADA @ FREE","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/TV5-Kannada_%28LCN-986%29.png"],["987","Vistara News","SD","News","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Vistara-news-new.png"],["990","UDAYA MUSIC","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/UDAYA-music.jpg"],["991","Raj Musix Kannada","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/RAJ-MUSIX-KANNADA.png"],["995","DD CHANDANA","SD","Entertainment","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/DD-Chandana.png"],["996","PUBLIC MUSIC","SD","Music","https://assets.airtel.in/static-assets/cms/dth/images/channellogo/Public%20Music_%28LCN-996%29.png"]];
+diff --git a/tv-home/web/app.css b/tv-home/web/app.css
+index 6dba407..d1d1fb1 100644
+--- a/tv-home/web/app.css
++++ b/tv-home/web/app.css
+@@ -241,7 +241,16 @@ body {
+ .caption span { display: block; font-size: 1.4375rem; line-height: 1.875rem; color: var(--text-2); }
+ 
+ /* ---------- apps ---------- */
+-.apps { position: absolute; left: var(--safe-x); right: var(--safe-x); top: 37.5rem; }
++.apps { position: absolute; left: var(--safe-x); right: var(--safe-x); top: 37.5rem; transition: transform 200ms var(--ease); }   /* local change: More apps slides up (keepGridInView) */
++/* local change: Classic keeps its row of apps along the bottom of the screen, not the middle */
++/* (held by its bottom edge, so a second row of apps or More apps grows upwards, not off the screen) */
++html:not(.theme-night):not(.theme-oled) .apps { top: auto; bottom: 5.5rem; }
++/* local change: big tiles on Classic, six a row (home, All apps, the Channels row) */
++html:not(.theme-night):not(.theme-oled) { --app-w: 16.6rem; --app-h: 9.35rem; }
++html:not(.theme-night):not(.theme-oled) .grid { grid-template-columns: repeat(6, var(--app-w));
++  column-gap: 2rem; grid-column-gap: 2rem; row-gap: 3.25rem; grid-row-gap: 3.25rem; }
++html:not(.theme-night):not(.theme-oled) .app .face.icon img { width: 5rem; height: 5rem; }
++html:not(.theme-night):not(.theme-oled) .app .label { font-size: 1.4375rem; line-height: 1.75rem; }
+ .grid {
+   display: grid; grid-template-columns: repeat(8, var(--app-w)); grid-auto-rows: var(--app-h);
+   column-gap: var(--gap); row-gap: var(--app-row-gap);
+@@ -1925,3 +1934,140 @@ html:not(.kids-on) .kids { display: none; }
+ }
+ 
+ 
++
++/* ================= local change: Channels row (home.channels) =================
++   Channel cards the width of an app tile, so eight sit over the eight apps: the channel's logo on
++   white, its number and name underneath. A channel without a logo shows its number big. */
++html.chan-row .shelf-track { gap: 2rem; }
++.ccard.chan { width: var(--app-w); height: calc(var(--app-h) + 3rem); }
++.ccard.chan.focus { transform: scale(1.1); }
++.ccard.chan .face { border-radius: 0.75rem; background: rgba(255, 255, 255, 0.12); }
++.ccard.chan.has-img .face { background: #fff; }
++.ccard.chan .face img {
++  top: 0.625rem; left: 0.75rem; width: calc(100% - 1.5rem); height: 5.5rem; object-fit: contain;
++}
++.ccard.chan .cwords, .ccard.chan.has-img .cwords {
++  display: flex; align-items: baseline; gap: 0.5rem; padding: 0.375rem 0.75rem 0.5rem;
++  background: rgba(10, 8, 12, 0.86); border-radius: 0 0 0.75rem 0.75rem;
++}
++.ccard.chan .cvalue { font-size: 1.375rem; line-height: 1.75rem; flex: none; }
++.ccard.chan .cwords b { font-size: 1.125rem; line-height: 1.75rem; min-width: 0; }
++.ccard.chan:not(.has-img) .cwords { top: 0; flex-direction: column; justify-content: center; align-items: flex-start; background: none; }
++.ccard.chan:not(.has-img) .cvalue { font-size: 2.5rem; line-height: 3rem; }
++
++/* ================= local change: Airtel colours (home.airtel_theme), Classic only =================
++   A dark red background in place of the photos, red highlights on what has the focus. */
++html.theme-airtel { --bg: #0b0204; }
++html.theme-airtel .bg img, html.theme-airtel .bgvid, html.theme-airtel .scenes,
++html.theme-airtel .ambient-lighting, html.theme-airtel .weather-canvas, html.theme-airtel .place { display: none; }
++html.theme-airtel .scrim {
++  background:
++    radial-gradient(110% 85% at 88% -12%, rgba(228, 0, 0, 0.62) 0%, rgba(140, 0, 20, 0.34) 38%, rgba(11, 2, 4, 0) 72%),
++    radial-gradient(70% 60% at 0% 110%, rgba(228, 0, 0, 0.22) 0%, rgba(11, 2, 4, 0) 70%),
++    linear-gradient(180deg, #1c0409 0%, #0b0204 100%);
++}
++html.theme-airtel .app.focus .face, html.theme-airtel .tile.focus .face {
++  box-shadow: 0 0 0 0.25rem #ff2a2a, 0 1.5rem 3rem rgba(228, 0, 0, 0.32);
++}
++html.theme-airtel .qbtn.focus { background: #e40000; color: #fff; }
++html.theme-airtel .shelf-head h2 { color: #fff; }
++html.theme-airtel .ccard.chan:not(.has-img) .face { background: linear-gradient(135deg, #e40000 0%, #7a0012 100%); }
++html.theme-airtel .ccard.chan .cwords { background: rgba(120, 0, 16, 0.92); }
++html.theme-airtel .ccard.chan:not(.has-img) .cwords { background: none; }
++
++/* local change: on Classic the Channels row sits just above the apps along the bottom, the photo and
++   the clock keep the top of the screen; it steps aside while More apps is open */
++html.chan-row:not(.theme-night):not(.theme-oled) .shelf { top: auto; bottom: calc(7.75rem + var(--apps-h, 7rem)); }   /* --apps-h: app.js, the row of apps under it */
++html.chan-row.expanded:not(.theme-night):not(.theme-oled) .shelf { visibility: hidden; }
++html.chan-row .shelf-head h2 { margin-bottom: 0.75rem; }
++
++/* local change: the All channels card (end of the Channels row) */
++.ccard.allch-card .face { background: rgba(255, 255, 255, 0.16); display: flex; align-items: center; justify-content: center; }
++.ccard.allch-card .cwords { position: static; display: block; background: none; text-align: center; padding: 0 0.75rem; }
++.ccard.allch-card .cwords b { font-size: 1.5rem; line-height: 1.875rem; font-weight: 650; color: #fff; white-space: normal; }
++.ccard.allch-card .face::before {
++  content: ""; display: block; position: absolute; top: 1.5rem; left: 50%; width: 2.25rem; height: 2.25rem; margin-left: -1.125rem;
++  background:
++    linear-gradient(#fff, #fff) 0 0 / 0.875rem 0.875rem no-repeat, linear-gradient(#fff, #fff) 100% 0 / 0.875rem 0.875rem no-repeat,
++    linear-gradient(#fff, #fff) 0 100% / 0.875rem 0.875rem no-repeat, linear-gradient(#fff, #fff) 100% 100% / 0.875rem 0.875rem no-repeat;
++  opacity: 0.9;
++}
++.ccard.allch-card .cwords { margin-top: 3rem; }
++html.theme-airtel .ccard.allch-card .face { background: linear-gradient(135deg, #e40000 0%, #7a0012 100%); }
++
++/* local change: All channels, a full screen grid of channel cards over the home */
++.allch {
++  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 50; display: none; flex-direction: column;
++  background: rgba(8, 6, 10, 0.96); padding: 3.25rem var(--safe-x) 0;
++}
++.allch.on { display: flex; }
++.allch-head { display: flex; align-items: center; gap: 2rem; margin-bottom: 1.5rem; flex: none; }
++.allch-head h2 { font-size: 2.625rem; line-height: 3.25rem; font-weight: 680; letter-spacing: -0.015em; }
++.allch-tabs { display: flex; gap: 0.75rem; }
++.allch-tab {
++  padding: 0.5rem 1.5rem; border-radius: 2rem; font-size: 1.5rem; line-height: 2rem; font-weight: 600;
++  background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.75);
++}
++.allch-tab.on { background: rgba(255, 255, 255, 0.24); color: #fff; }
++.allch-tab.focus { background: #fff; color: #111; transform: scale(1.06); }
++.allch-hint { margin-left: auto; font-size: 1.375rem; color: rgba(255, 255, 255, 0.55); }
++.allch-grid {
++  flex: 1; min-height: 0; overflow: hidden; position: relative;
++  display: grid; grid-template-columns: repeat(6, var(--app-w)); grid-auto-rows: calc(var(--app-h) + 3rem);
++  column-gap: 1.5rem; row-gap: 1.5rem; grid-column-gap: 1.5rem; grid-row-gap: 1.5rem;
++  padding: 0.75rem 0.5rem 3rem; margin: 0 -0.5rem; scroll-behavior: auto;   /* smooth scrolling is ignored on this hidden-scroll box */
++}
++.allch-grid .ccard.chan { width: auto; }
++.allch-grid .ccard.chan.focus .face { box-shadow: 0 0 0 0.25rem #fff, 0 1rem 2rem rgba(0, 0, 0, 0.5); }
++html.theme-airtel .allch { background: rgba(20, 2, 6, 0.97); }
++html.theme-airtel .allch-grid .ccard.chan.focus .face { box-shadow: 0 0 0 0.25rem #ff2a2a, 0 1rem 2rem rgba(228, 0, 0, 0.3); }
++html.theme-airtel .allch-tab.focus { background: #e40000; color: #fff; }
++
++/* local change: neater channel cards: the name first and in full, the number small and grey on the
++   right, HD as a small badge on the logo; and no photo credit line under the date on Classic */
++.ccard.chan .cwords, .ccard.chan.has-img .cwords { justify-content: space-between; gap: 0.5rem; padding: 0.4375rem 0.75rem 0.5rem; }
++.ccard.chan .cwords b { order: 1; flex: 1; font-size: 1.1875rem; font-weight: 620; color: #fff; }
++.ccard.chan .cvalue { order: 2; font-size: 1rem; font-weight: 500; color: rgba(255, 255, 255, 0.55); }
++.ccard.chan:not(.has-img) .cvalue { order: 0; font-size: 2.5rem; color: #fff; }
++.ccard.chan .chd {
++  position: absolute; top: 0.4375rem; right: 0.4375rem; padding: 0.0625rem 0.375rem; border-radius: 0.3125rem;
++  font-size: 0.8125rem; line-height: 1.125rem; font-weight: 750; letter-spacing: 0.04em;
++  background: rgba(10, 8, 12, 0.78); color: #fff;
++}
++html:not(.theme-night):not(.theme-oled).chan-row .place { display: none; }
++
++/* local change: Lights menu, the colour dot on the Colour row */
++.lswatch { display: inline-block; width: 1.125rem; height: 1.125rem; border-radius: 50%; margin-left: 0.625rem; vertical-align: -0.125rem;
++  box-shadow: 0 0 0 0.125rem rgba(255, 255, 255, 0.6); }
++
++/* local change: Classic's All apps button (the More apps tile), drawn like the All channels card */
++.face.tool.allapps { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.375rem; }
++.face.tool.allapps span { font-size: 1.25rem; line-height: 1.5rem; font-weight: 650; color: #fff; }
++.allapps-ic {
++  display: block; width: 1.875rem; height: 1.875rem;
++  background:
++    linear-gradient(#fff, #fff) 0 0 / 0.75rem 0.75rem no-repeat, linear-gradient(#fff, #fff) 100% 0 / 0.75rem 0.75rem no-repeat,
++    linear-gradient(#fff, #fff) 0 100% / 0.75rem 0.75rem no-repeat, linear-gradient(#fff, #fff) 100% 100% / 0.75rem 0.75rem no-repeat;
++  opacity: 0.9;
++}
++
++/* local change: the All channels tile inside All apps (IPTV logo and words) */
++.face.tool.allch-app { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem;
++  background: linear-gradient(135deg, #c8102e 0%, #6e0a1d 100%); }
++.face.tool.allch-app .iptv-ic { width: 3.25rem; height: 2.3rem; }
++.face.tool.allch-app span { font-size: 1.1875rem; line-height: 1.375rem; font-weight: 650; color: #fff; }
++.app .face.tool.allch-app svg.iptv-ic { width: 3.25rem; height: 2.3rem; stroke: none; }
++.app .face.tool.allch-app svg.iptv-ic path { stroke: #fff; }
++html .app .face.tool.allch-app { background: linear-gradient(135deg, #c8102e 0%, #6e0a1d 100%) !important; }
++.app .face.tool.allch-app svg.iptv-ic { width: 4rem; height: 2.85rem; }
++
++/* local change: bigger channel cards to match the six-a-row tiles: a taller logo, larger words */
++.ccard.chan .face img { top: 0.75rem; left: 1rem; width: calc(100% - 2rem); height: calc(100% - 4.25rem); }
++.ccard.chan .cwords, .ccard.chan.has-img .cwords { padding: 0.5rem 0.875rem 0.625rem; }
++.ccard.chan .cwords b { font-size: 1.4375rem; line-height: 2rem; }
++.ccard.chan .cvalue { font-size: 1.1875rem; }
++.ccard.chan .chd { font-size: 1rem; line-height: 1.375rem; padding: 0.0625rem 0.5rem; }
++.ccard.allch-card .cwords b { font-size: 1.6875rem; }
++.allch-grid { column-gap: 2rem; grid-column-gap: 2rem; row-gap: 2rem; grid-row-gap: 2rem; }
++/* local change: while All apps is open on Classic the clock panel steps aside, so the tiles get the screen */
++html.expanded:not(.theme-night):not(.theme-oled) header.top { opacity: 0; transition: opacity 200ms; }
+diff --git a/tv-home/web/app.js b/tv-home/web/app.js
+index 064a5be..67a5b8e 100644
+--- a/tv-home/web/app.js
++++ b/tv-home/web/app.js
+@@ -56,7 +56,7 @@
+   // read in readConfig() once the page starts (mock.js fills them in for previews). See docs/CONFIG.md.
+   var CFG = {}, HOME = {}, TVCFG = {}, QUICK = [];
+   var WXCFG = { lat: -33.8688, lon: 151.2093, place: "Sydney", timezone: "Australia/Sydney" };
+-  var QUICK_ALL = ["sleep", "picture", "look", "soundscape", "screen_off", "headphones", "input", "bluetooth", "network", "tvsettings", "screensaver", "extend"];
++  var QUICK_ALL = ["sleep", "picture", "look", "soundscape", "screen_off", "headphones", "input", "bluetooth", "network", "tvsettings", "screensaver", "extend", "light"];   // local change: light
+   // The most personal photos this TV keeps (also MAX_PHOTOS in bridge/server.py and MainActivity.kt).
+   var MAX_PHOTOS = 50;
+   var ON_TV = false;   // served by the on-TV app (config "mode"), which can open the TV's own settings screens
+@@ -213,7 +213,13 @@
+   // The TV's own tools go last, in this order, just before the screens.
+   var APP_LAST = ["com.mediatek.wwtv.tvcenter", "com.android.vending", "com.amazon.venezia", "com.android.tv.settings"];
+   // Kept behind the "More apps" tile on every TV (apps most people rarely open).
+-  var TUCKED = ["com.mediatek.wwtv.tvcenter", "com.google.android.youtube.tvmusic", "com.spotify.tv.android", "com.android.vending", "com.amazon.venezia"];
++  var TUCKED = ["com.mediatek.wwtv.tvcenter", "com.google.android.youtube.tvmusic", "com.spotify.tv.android", "com.android.vending", "com.amazon.venezia",
++    // local change (this Haier, for a one-row home): everything but Airtel TV, YouTube, Netflix, Prime Video, JioHotstar and Sun NXT
++    "com.cxinventor.file.explorer", "com.alphainventor.filemanager", "com.haier.emanual", "com.mediatek.androidbox",
++    "com.haier.launcher.haiermatrix", "com.gathin.tvhome", "com.mediatek.wwtv.mediaplayer", "com.mxtech.videoplayer.ad",
++    "com.mxtech.videoplayer.television", "com.htlabs.ottplay", "com.yablio.sendfilestotv", "tv.skyclock", "com.haier.tvhousekeeper",
++    "org.videolan.vlc", "com.google.android.play.games", "com.google.android.videos", "com.internet.tvbrowser",
++    "com.sonyliv", "com.graymatrix.did", "tv.airtel.xstream.tvapp"];
+   // The same tools on other makers' TVs, by name.
+   var TUCKED_NAMES = /^(screen ?shar|live ?tv|usb|media ?cent|browser|device assistant)/i;
+   // Both Android stores, under the same translated name.
+@@ -245,6 +251,10 @@
+     switch: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="6" height="16" rx="3"/><rect x="13" y="4" width="6" height="16" rx="3"/><circle cx="8" cy="8" r="1" class="fill"/><circle cx="16" cy="14" r="1" class="fill"/></svg>',
+     hdmi: '<svg viewBox="0 0 24 24"><path d="M4 8h16v5l-3 4H7l-3-4z"/><path d="M8 8v3M11 8v3M13 8v3M16 8v3"/></svg>',
+     screensaver: '<svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="2.5"/><path d="M15.2 7.3a3.4 3.4 0 1 0 2.1 5 3.9 3.9 0 0 1-2.1-5z"/></svg>',
++    light: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',   // local change: Lights
++    // local change: the All channels tile in All apps, a TV with an aerial and "IPTV" on its screen
++    iptv: '<svg viewBox="0 0 48 34" class="iptv-ic"><path d="M17 3l7 6 7-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
++      '<rect x="4" y="9" width="40" height="22" rx="4" fill="#fff"/><text x="24" y="24.5" text-anchor="middle" font-size="11" font-weight="800" font-family="sans-serif" fill="#c8102e">IPTV</text></svg>',
+     headphones: '<svg viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>',
+     bluetooth: '<svg viewBox="0 0 24 24"><path d="M6.5 7.5l11 9-5.5 4.5v-18l5.5 4.5-11 9"/></svg>',
+     network: '<svg viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.7 12.5a9.5 9.5 0 0 1 12.6 0M8.9 16a4.8 4.8 0 0 1 6.2 0"/><circle cx="12" cy="19.3" r="1"/></svg>',
+@@ -384,12 +394,21 @@
+     // no "quick" from an older bridge: the sleep timer, and the picture switch where the TV has one
+     QUICK = (Array.isArray(ST.quick) ? ST.quick : TVCFG.quick || ["sleep", "picture"])
+       .filter(function (q, i, a) { return QUICK_ALL.indexOf(q) >= 0 && a.indexOf(q) === i; });
++    // local change: the Lights button shows up once, second in the row, as soon as the bulb is set
++    // up; after that Home settings, Quick buttons decides (taking it off there keeps it off)
++    if (lightsReady() && ST.quick_light_added !== true) {
++      if (QUICK.indexOf("light") < 0) QUICK.splice(Math.min(1, QUICK.length), 0, "light");
++      ST.quick_light_added = true;
++      ST.quick = QUICK.slice();   // kept, so the button stays after the next start too
++      try { keepSettings(false); } catch (e) {}
++    }
+     THEME = (Q.match(/[?&]theme=([a-z]+)/) || [])[1] || lookSetting();
+     if (THEME !== "classic" && THEME !== "oled") THEME = "night";
+     NIGHT = THEME === "night";
+     OLED = THEME === "oled";
+     document.documentElement.classList.toggle("theme-night", NIGHT);
+     document.documentElement.classList.toggle("theme-oled", OLED);
++    applyAirtelTheme();   // local change: Airtel colours on Classic
+     GLASS = glassSetting();
+     document.documentElement.classList.toggle("glass", GLASS !== "off");
+     document.documentElement.classList.toggle("glass-lite", GLASS === "lite");
+@@ -417,7 +436,7 @@
+     // a link set in Home settings wins over home.video_url; one from config.json alone means on
+     VIDEO_URL = typeof ST.video_url === "string" ? ST.video_url : typeof HOME.video_url === "string" ? HOME.video_url : "";
+     VIDEO_ON = !!VIDEO_URL && (typeof ST.video === "boolean" ? ST.video : true);
+-    GRID_COLS = NIGHT ? 12 : 8;
++    GRID_COLS = NIGHT ? 12 : OLED ? 8 : 6;   // local change: Classic has six big tiles a row
+     DOCK_APPS = Math.max(1, Math.min(10, parseInt(HOME.dock_size, 10) || 10));
+     initSoundscape();
+     if (smartOn()) DOCK_APPS = Math.min(DOCK_APPS, 9);   // the Smart home tile takes one place in the dock
+@@ -439,6 +458,11 @@
+     setPeople(localPeopleOrder(people, OFFLINE));
+     newApps = kept("tvhome.apps.new") || [];
+   }
++  // local change: Airtel colours (home.airtel_theme, or the switch in Look and scenes), Classic only
++  function airtelTheme() { return typeof ST.airtel_theme === "boolean" ? ST.airtel_theme : HOME.airtel_theme === true; }
++  function applyAirtelTheme() {
++    document.documentElement.classList.toggle("theme-airtel", airtelTheme() && !NIGHT && !OLED);
++  }
+   function lookSetting() {
+     var l = ST.look || kept("tvhome.look") || HOME.look || "night";
+     return (l === "classic" || l === "oled") ? l : "night";
+@@ -1551,9 +1575,81 @@
+       if (q === "bluetooth" || q === "network") return nativeSettingsScreen() || (ON_TV && !OFFLINE);
+       if (q === "tvsettings") return !!(TV && (TV.launch || TV.openSettings)) || !OFFLINE;
+       if (q === "extend") return devOn();
++      if (q === "light") return lightsReady();   // local change: Lights
+       return false;
+     });
+   }
++  // local change: the Lights quick button, the household's Halonix bulb through its own service
++  // (Lights.kt). A short list under the button, like the Input menu: OK sends one setting.
++  function lightsReady() {
++    if (!TV) return MOCK;   // the browser preview shows it
++    try { return !!(TV.hasLights && TV.hasLights()); } catch (e) { return false; }
++  }
++  // Brightness and Colour are rows Left and Right change (the bulb follows straight away, the menu
++  // stays open); the rest are one press each. The last brightness and colour are kept on this TV.
++  var LIGHT_COLOURS = [
++    { key: "light_c_warm", white: 0 }, { key: "light_c_cool", white: 100 },
++    { key: "light_c_red", h: 0 }, { key: "light_c_orange", h: 28 }, { key: "light_c_yellow", h: 52 },
++    { key: "light_c_green", h: 120 }, { key: "light_c_blue", h: 225 }, { key: "light_c_purple", h: 275 },
++    { key: "light_c_pink", h: 320 }
++  ];
++  var LIGHT = (function () {
++    var k = kept("tvhome.light") || {};
++    return { bri: k.bri >= 10 && k.bri <= 100 ? k.bri : 80, col: k.col >= 0 && k.col < LIGHT_COLOURS.length ? k.col : 0 };
++  })();
++  function lightNow() {   // the command for the current brightness and colour
++    var c = LIGHT_COLOURS[LIGHT.col];
++    return c.white != null ? { path: "/api/white", body: { brightness: LIGHT.bri, temp: c.white } }
++      : { path: "/api/colour", body: { h: c.h, s: 100, v: LIGHT.bri } };
++  }
++  function lightRows() {
++    var c = LIGHT_COLOURS[LIGHT.col];
++    return [
++      { act: "light", path: "/api/power", body: { on: true }, label: t("light_on"), sub: t("light_on_sub") },
++      { act: "light", path: "/api/power", body: { on: false }, label: t("light_off") },
++      { act: "light", keep: true, adjust: "bri", label: t("light_bri", { n: LIGHT.bri }), sub: t("light_adjust_sub") },
++      { act: "light", keep: true, adjust: "col", label: t("light_col", { c: t(c.key) }), sub: t("light_adjust_sub"),
++        swatch: c.white != null ? (c.white ? "#dfe9ff" : "#ffd28a") : "hsl(" + c.h + ",95%,55%)" },
++      { act: "light", path: "/api/white", body: { brightness: 10, temp: 0 }, label: t("light_night"), sub: t("light_night_sub") }
++    ].map(function (x) { x.icon = ICONS.light; return x; });
++  }
++  function openLightMenu() {
++    inItems = lightRows();
++    inI = 0; zone = "inputs";
++    renderInputMenu();
++  }
++  // Left/Right on Brightness or Colour: change it, show it, send it (the newest only, spaced out)
++  function lightAdjust(dx) {
++    var it = inItems[inI];
++    if (!it || !it.adjust) return false;
++    if (it.adjust === "bri") LIGHT.bri = Math.max(10, Math.min(100, LIGHT.bri + dx * 10));
++    else LIGHT.col = (LIGHT.col + dx + LIGHT_COLOURS.length) % LIGHT_COLOURS.length;
++    keep("tvhome.light", LIGHT);
++    var at = inI;
++    inItems = lightRows(); inI = at;
++    renderInputMenu();
++    queueLight(lightNow());
++    return true;
++  }
++  var lightPending = null, lightTimer = null;
++  function queueLight(cmd) {
++    lightPending = cmd;
++    clearTimeout(lightTimer);
++    lightTimer = setTimeout(flushLight, 350);
++  }
++  function flushLight() {
++    if (!lightPending) return;
++    var started = false;
++    try { started = !!(TV && TV.lightCommand && TV.lightCommand(lightPending.path, JSON.stringify(lightPending.body))); } catch (e) {}
++    if (started || MOCK) lightPending = null;
++    else lightTimer = setTimeout(flushLight, 500);   // the last one is still on its way: try again shortly
++  }
++  function sendLight(it) {
++    if (it.adjust) { queueLight(lightNow()); return; }   // OK on Brightness or Colour: send it as shown
++    var started = false;
++    try { started = !!(TV && TV.lightCommand && TV.lightCommand(it.path, JSON.stringify(it.body))); } catch (e) {}
++    note(started ? t("light_sending", { what: it.label }) : t(MOCK ? "opening" : "light_busy", { title: it.label }));
++  }
+   function hasQuick() { return quickVisible().length > 0; }
+   function picLabel() {
+     if (picBusy) return t("switching");
+@@ -1596,6 +1692,8 @@
+         el.innerHTML = ICONS.screen_off + "<span>" + esc(t("screen_off")) + "</span>";
+       } else if (q === "input") {
+         el.innerHTML = ICONS.input + "<span>" + esc(t("input")) + "</span>";
++      } else if (q === "light") {   // local change: Lights
++        el.innerHTML = ICONS.light + "<span>" + esc(t("lights")) + "</span>";
+       } else if (q === "screensaver") {
+         el.innerHTML = ICONS.screensaver + "<span>" + esc(t("quick_screensaver")) + "</span>";
+       } else if (q === "extend") {
+@@ -1821,7 +1919,10 @@
+   function renderInputMenu() {
+     var pop = $("inputs-pop");
+     pop.innerHTML = inItems.map(function (it, i) {
+-      return '<div class="grow' + (i === inI ? " focus" : "") + '" role="menuitem"><i>' + it.icon + "</i><span><b>" + esc(it.label) +
++      // local change: Lights' Brightness and Colour rows show ‹ › and a colour dot
++      var swatch = it.swatch ? '<em class="lswatch" style="background:' + esc(it.swatch) + '"></em>' : "";
++      return '<div class="grow' + (i === inI ? " focus" : "") + (it.adjust ? " ladj" : "") + '" role="menuitem"><i>' + it.icon + "</i><span><b>" +
++        (it.adjust ? "‹ " : "") + esc(it.label) + (it.adjust ? " ›" : "") + swatch +
+         "</b>" + (it.sub ? "<small>" + esc(it.sub) + "</small>" : "") + "</span></div>";
+     }).join("");
+     pop.classList.add("on");
+@@ -1841,8 +1942,10 @@
+   }
+   function doInputMenu() {
+     var it = inItems[inI];
++    if (it && it.keep) { sendLight(it); return; }   // local change: Lights, the menu stays open
+     closeInputMenu();
+     if (!it) return;
++    if (it.act === "light") { sendLight(it); return; }   // local change: Lights
+     if (it.act === "input") {
+       var done = false;
+       try { done = !!(TV && TV.openInput && TV.openInput(it.id)); } catch (e) {}
+@@ -1866,6 +1969,17 @@
+     try { ok = !!(TV && TV.startScreensaver && TV.startScreensaver()); } catch (e) {}
+     if (!ok) note(t("no_screensaver"));
+   }
++  // local change: the screensavers the TV has (TVOS.screensavers), for the choice in Home settings.
++  function screensaverChoices() {
++    var out = { current: "", list: [] };
++    try {
++      var d = JSON.parse((TV && TV.screensavers && TV.screensavers()) || "{}");
++      if (d && Array.isArray(d.list)) out = { current: d.current || "", list: d.list };
++    } catch (e) {}
++    return out;
++  }
++  function isGoogleSaver(s) { return !!s && String(s.id).indexOf("com.google.android.apps.tv.dreamx/") === 0; }
++  function screensaverName(s) { return isGoogleSaver(s) ? t("screensaver_google") : (s.label || s.id); }
+   // Google TV's own Ambient mode settings: where the source and the Google Photos albums are picked.
+   function openAmbientSettings() {
+     var ok = false;
+@@ -1881,6 +1995,7 @@
+     else if (q === "headphones") openBluetoothScreen();
+     else if (q === "screen_off") toggleScreenOff(true);
+     else if (q === "input") openInputs();
++    else if (q === "light") openLightMenu();   // local change: Lights
+     else if (q === "screensaver") startScreensaver();
+     else if (q === "extend") devExtend();
+     else if (q === "bluetooth" || q === "network") openSettingsScreen(q);
+@@ -2086,6 +2201,8 @@
+   var KEEP_MAX = 10;
+   function renderShelf() {
+     var track = $("shelf");
++    if (!HOME.custom_cards) CARDS = channelCards();   // local change: the Channels row uses the custom cards' place
++    document.documentElement.classList.toggle("chan-row", !!(CARDS[0] && CARDS[0].channel));
+     data.shows = KW_ON ? (data.showsBy[who] || []).slice(0, KEEP_MAX) : [];
+     var anyone = KW_ON && PEOPLE.some(function (p) { return (data.showsBy[p.id] || []).length; });
+     // nobody has anything on the go: no empty box, the photo has the space (unless Now playing
+@@ -2094,7 +2211,7 @@
+     $("shelf-section").classList.toggle("empty", !anyone && !(NIGHT && npVisible()) && !CARDS.length);
+     // custom cards keep the row (and its heading) even with Keep watching switched off
+     document.documentElement.classList.toggle("kw-off", !KW_ON && !CARDS.length);
+-    $("shelf-title").textContent = t(data.shows.length || !CARDS.length ? "keep_watching" : "custom_cards");
++    $("shelf-title").textContent = t(data.shows.length || !CARDS.length ? "keep_watching" : CARDS[0].channel ? "channels_head" : "custom_cards");
+     renderPeople();
+     if (!KW_ON) { track.innerHTML = ""; shelfEls = []; addCards(track); return; }   // row switched off: only the custom cards, if any
+     if (!data.shows.length) {
+@@ -2165,10 +2282,11 @@
+         if (c.value) add(tx, "i", "", c.value);
+         el.appendChild(tx);
+       } else {
+-        el.className = "tile show ccard" + (img ? " has-img" : "");
++        el.className = "tile show ccard" + (img ? " has-img" : "") + (c.channel || c.allch ? " chan" : "") + (c.allch ? " allch-card" : "");   // local change: chan
+         var face = document.createElement("div");
+         face.className = "face";
+         if (img) face.appendChild(img);
++        if (c.hd) add(face, "span", "chd", "HD");   // local change: a small HD badge on the logo
+         var words = document.createElement("div");
+         words.className = "cwords";
+         if (c.value) add(words, "span", "cvalue", c.value);
+@@ -2180,7 +2298,161 @@
+       shelfEls.push(el);
+     });
+   }
++  // local change: the Channels row (home.channels), set-top box channels shown as these cards, the
++  // last ones tuned from here first. OK switches the TV to the box's input and tunes the box through
++  // the launcher's set-top box remote (BoxRemote.kt). It can only remember channels tuned from here.
++  // The row: the channels tuned last (from the row or from All channels) first, then the favourites
++  // (home.channels), seven in all, then the All channels card: eight, over the eight apps.
++  var CHANNEL_MAX = 5, CHANNEL_KEY = "tvhome.channels.recent";   // five channels and All channels: six, over the six apps
++  function channelImage(v) {
++    // a logo inside the app (logos/sun-tv.png, tv-home/web/logos) or an http(s) link
++    return typeof v === "string" && (/^https?:\/\/[^\s"'`$]+$/.test(v) || /^logos\/[a-z0-9-]{1,40}\.(png|svg|webp|jpg)$/.test(v)) ? v : "";
++  }
++  // Airtel's list (airtel-channels.js): number -> [number, name, SD/HD, genre, logo]
++  var ALLCH = Array.isArray(window.AIRTEL_CHANNELS) ? window.AIRTEL_CHANNELS.filter(function (r) {
++    return Array.isArray(r) && /^[0-9]{1,5}$/.test(r[0]) && typeof r[1] === "string";
++  }) : [];
++  function allchFind(num) { for (var i = 0; i < ALLCH.length; i++) if (ALLCH[i][0] === num) return ALLCH[i]; return null; }
++  function channelBox() {
++    var ok = false;
++    try { ok = !!(TV && TV.hasChannelBox && TV.hasChannelBox()); } catch (e) {}
++    return ok || MOCK;
++  }
++  function favChannels() {
++    var out = [];
++    (Array.isArray(HOME.channels) ? HOME.channels : []).forEach(function (c) {
++      var num = c && String(c.number == null ? "" : c.number).trim();
++      if (!/^[0-9]{1,5}$/.test(num) || out.some(function (x) { return x.channel === num; })) return;
++      var name = typeof c.name === "string" && c.name.trim() ? c.name.trim().slice(0, 40) : t("channel_n", { n: num });
++      var nn = neatName(name);
++      out.push({ title: nn.name + (nn.hd ? " HD" : ""), hd: nn.hd, value: num, channel: num, image: channelImage(c.image) });   // HD named and badged
++    });
++    return out;
++  }
++  function channelCard(num, favs) {
++    for (var i = 0; i < favs.length; i++) if (favs[i].channel === num) return favs[i];
++    var r = allchFind(num);
++    if (!r) return null;
++    var n = neatName(r[1]);
++    var hd = n.hd || r[2] === "HD";
++    return { title: n.name + (hd ? " HD" : ""), hd: hd, value: num, channel: num, image: channelImage(r[4]) };   // HD named and badged
++  }
++  // Tidy a channel's name for a card: "STAR VIJAY" -> "Star Vijay", "Sun TV HD" -> "Sun TV" + an HD badge.
++  // Short words in capitals (TV, KTV, SUN) stay as they are.
++  function neatName(s) {
++    var name = String(s || "").replace(/\s+/g, " ").trim(), hd = false;
++    if (/\sHD$/i.test(name)) { hd = true; name = name.replace(/\sHD$/i, ""); }
++    if (name === name.toUpperCase() && /[A-Z]{4,}/.test(name)) {
++      name = name.split(" ").map(function (w) { return w.length <= 3 ? w : w.charAt(0) + w.slice(1).toLowerCase(); }).join(" ");
++    }
++    return { name: name.slice(0, 40), hd: hd };
++  }
++  function channelCards() {
++    var favs = favChannels();
++    if ((!favs.length && !ALLCH.length) || !channelBox()) return [];
++    var recent = kept(CHANNEL_KEY);
++    recent = Array.isArray(recent) ? recent : [];
++    var cards = [];
++    recent.concat(favs.map(function (f) { return f.channel; })).forEach(function (num) {
++      if (cards.length >= CHANNEL_MAX || cards.some(function (x) { return x.channel === num; })) return;
++      var c = channelCard(num, favs);
++      if (c) cards.push(c);
++    });
++    if (ALLCH.length) cards.push({ title: t("all_channels"), value: "", allch: true, image: "" });
++    return cards;
++  }
++
++  // ---- All channels: a full screen grid of Airtel's channels, Tamil first. OK tunes, Back closes. ----
++  var ALLCH_COLS = 6, ALLCH_TABS = ["tamil", "all"];   // local change: six big cards a row
++  var ACH = { tab: 0, i: 0, onTabs: false, back: null };
++  function allchList() {
++    if (ALLCH_TABS[ACH.tab] === "tamil") return ALLCH.filter(function (r) { var n = +r[0]; return n >= 748 && n <= 825; });
++    return ALLCH;
++  }
++  function openAllch() {
++    ACH.back = { zone: zone, s: s };
++    ACH.i = 0; ACH.onTabs = false;
++    zone = "allch";
++    var box = $("allch");
++    if (!box) {
++      box = document.createElement("div");
++      box.id = "allch"; box.className = "allch";
++      box.innerHTML = '<div class="allch-head"><h2 id="allch-title"></h2><div class="allch-tabs" id="allch-tabs"></div>' +
++        '<p class="allch-hint" id="allch-hint"></p></div><div class="allch-grid" id="allch-grid"></div>';
++      document.body.appendChild(box);
++    }
++    box.classList.add("on");
++    renderAllch(true);
++  }
++  function closeAllch() {
++    var box = $("allch");
++    if (box) box.classList.remove("on");
++    var b = ACH.back || { zone: "shelf", s: s };
++    zone = b.zone === "allch" ? "shelf" : b.zone; s = b.s;
++  }
++  function renderAllch(full) {
++    var list = allchList(), grid = $("allch-grid");
++    $("allch-title").textContent = t("all_channels");
++    $("allch-hint").textContent = t("allch_hint");
++    $("allch-tabs").innerHTML = ALLCH_TABS.map(function (id, k) {
++      return '<span class="allch-tab' + (k === ACH.tab ? " on" : "") + (ACH.onTabs && k === ACH.tab ? " focus" : "") + '">' + esc(t("allch_" + id)) + "</span>";
++    }).join("");
++    if (full) {
++      grid.innerHTML = list.map(function (r) {
++        var img = channelImage(r[4]), nn = neatName(r[1]);
++        return '<div class="tile show ccard chan' + (img ? " has-img" : "") + '"><div class="face">' +
++          (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : "") +
++          (nn.hd || r[2] === "HD" ? '<span class="chd">HD</span>' : "") +
++          '<div class="cwords"><span class="cvalue">' + esc(r[0]) + "</span><b>" + esc(nn.name + (nn.hd || r[2] === "HD" ? " HD" : "")) + "</b></div></div></div>";
++      }).join("");
++      grid.scrollTop = 0;
++    }
++    var els = grid.children;
++    for (var k = 0; k < els.length; k++) els[k].classList.toggle("focus", !ACH.onTabs && k === ACH.i);
++    var f = !ACH.onTabs && els[ACH.i];
++    if (f) {
++      var top = f.offsetTop, bottom = top + f.offsetHeight, view = grid.clientHeight, pad = 24;
++      if (top - pad < grid.scrollTop) grid.scrollTop = Math.max(0, top - pad);
++      else if (bottom + pad > grid.scrollTop + view) grid.scrollTop = bottom + pad - view;
++    } else if (ACH.onTabs) grid.scrollTop = 0;
++  }
++  function allchMove(dx, dy) {
++    var n = allchList().length;
++    if (ACH.onTabs) {
++      if (dx) { var tab = Math.max(0, Math.min(ALLCH_TABS.length - 1, ACH.tab + dx)); if (tab !== ACH.tab) { ACH.tab = tab; ACH.i = 0; renderAllch(true); } return; }
++      if (dy > 0 && n) { ACH.onTabs = false; ACH.i = 0; }
++      renderAllch(false); return;
++    }
++    if (dy < 0 && ACH.i < ALLCH_COLS) { ACH.onTabs = true; renderAllch(false); return; }
++    var i = ACH.i + dx + dy * ALLCH_COLS;
++    if (dx && Math.floor(i / ALLCH_COLS) !== Math.floor(ACH.i / ALLCH_COLS)) return;   // Left/Right stay on the row
++    ACH.i = Math.max(0, Math.min(n - 1, i));
++    renderAllch(false);
++  }
++  function allchOk() {
++    if (ACH.onTabs) { ACH.onTabs = false; ACH.i = 0; renderAllch(false); return; }
++    var r = allchList()[ACH.i];
++    if (!r) return;
++    closeAllch();
++    zone = "shelf";
++    tuneChannelCard({ channel: r[0] });
++  }
++  function tuneChannelCard(c) {
++    var input = HOME.channel_input || (Array.isArray(HOME.inputs) && HOME.inputs[0] && HOME.inputs[0].id) || "";
++    var started = false;
++    try { started = !!(TV && TV.tuneChannel && TV.tuneChannel(String(input), c.channel)); } catch (e) {}
++    if (!started) { note(t("channel_busy")); return; }
++    var recent = kept(CHANNEL_KEY);
++    recent = (Array.isArray(recent) ? recent : []).filter(function (n) { return n !== c.channel; });
++    recent.unshift(c.channel);
++    keep(CHANNEL_KEY, recent.slice(0, 20));
++    renderShelf();
++    s = data.shows.length;   // the channel just tuned is first in the row now
++    paintFocus();
++  }
+   function openCard(c) {
++    if (c && c.allch) { openAllch(); return; }   // local change: All channels
++    if (c && c.channel) { tuneChannelCard(c); return; }
+     if (!c || (!c.app && !c.url)) return;
+     if (c.app && TV && TV.launch(c.app)) return;
+     if (OFFLINE) { status(t("computer_off")); return; }
+@@ -2222,7 +2494,7 @@
+   // The gear tile: always there, whatever the TV calls its own settings app. OK opens a small menu,
+   // Home settings (this page's own) or TV settings (Android's).
+   function gearItem() { return { kind: "gear", name: t("settings"), package: SETTINGS_PKG }; }
+-  function moreItem() { return { kind: "more", name: t("more_apps") }; }
++  function moreItem() { return { kind: "more", name: t(NIGHT ? "more_apps" : "all_apps") }; }   // local change: All apps on Classic
+   // Smart home (optional, smarthome.js): its tile sits just before the gear tile, only when
+   // config.json has a home_assistant section with rooms or scenes. Otherwise nothing changes.
+   function smartOn() { return !!(window.smartHome && window.smartHome.available()); }
+@@ -2279,10 +2551,18 @@
+     var list = apps.filter(function (a) { return !tucked(a); });
+     var extra = apps.filter(tucked);
+     var inputs = resolveInputs();
+-    list = list.concat(inputs);
++    list = inputs.concat(list);   // local change: pinned inputs first in the Classic grid, never cut off behind More apps
+     data.screens.forEach(function (sc) { list.push({ kind: "screen", id: sc.id, name: sc.name, ready: sc.ready, note: sc.note, noteKey: sc.note_key, noteVars: sc.note_vars }); });
+     var tools = toolItems();
++    // local change: inside All apps, All channels sits like an app right after the inputs (Airtel TV)
++    if (expanded && ALLCH.length && channelBox()) list.splice(inputs.length, 0, { kind: "allch", name: t("all_channels"), package: "allch:" });
+     if (expanded) return list.concat(extra, tools);
++    // local change: Classic's home is one row of six: the first five, then All apps (Settings and the
++    // rest are inside All apps; the remote's Settings key still opens the gear menu)
++    if (!OLED) {
++      var all = list.concat(tools);
++      return extra.length || all.length > GRID_COLS ? list.slice(0, GRID_COLS - 1).concat([moreItem()]) : all;
++    }
+     if (extra.length || list.length > GRID_MAX - tools.length) {
+       list = list.slice(0, GRID_MAX - 1 - tools.length).concat(tools, [moreItem()]);
+     } else list = list.concat(tools);
+@@ -2379,7 +2659,7 @@
+   // old pick-up-to-reorder behaviour, now in startMove(). Gear/smart/screen tiles stay put.
+   function holdApp() {
+     var a = gridItems[g];
+-    if (!a || a.kind === "more") return false;
++    if (!a || a.kind === "more" || a.kind === "allch") return false;   // local change: allch
+     if (a.kind === "gear" || a.kind === "smart" || a.kind === "devmode" || a.kind === "screen") { flash(t("stays_put", { name: a.name })); return true; }
+     if (a.kind !== "app") return startMove();
+     openAppMenu(a);
+@@ -2641,7 +2921,9 @@
+     var face;
+     if (it.kind === "screen") face = '<div class="face tool">' + ICONS.screen + "</div>";
+     else if (it.kind === "input") face = '<div class="face tool input-ic ic-' + esc(it.icon || "hdmi") + '">' + (ICONS[it.icon] || ICONS.hdmi || ICONS.input) + "</div>";
+-    else if (it.kind === "more") face = '<div class="face tool">' + ICONS.more + "</div>";
++    // local change: Classic's More apps is an "All apps" button, like the All channels card
++    else if (it.kind === "more") face = '<div class="face tool allapps"><i class="allapps-ic"></i><span>' + esc(t("all_apps")) + "</span></div>";
++    else if (it.kind === "allch") face = '<div class="face tool allch-app">' + ICONS.iptv + "<span>" + esc(t("all_channels")) + "</span></div>";   // local change
+     else if (it.kind === "gear") face = '<div class="face tool">' + ICONS.gear + "</div>";
+     else if (it.kind === "devmode") face = '<div class="face tool">' + ICONS.devmode + "</div>";
+     else if (it.kind === "smart") face = '<div class="face tool">' + window.smartHome.icon + "</div>";
+@@ -2669,6 +2951,9 @@
+     }
+     $("grid").innerHTML = gridItems.map(appHTML).join("");
+     gridEls = Array.prototype.slice.call($("grid").children);
++    if (!expanded && gridShift) { gridShift = 0; $("apps-section").style.transform = ""; }   // local change: see keepGridInView
++    // local change: the Channels row sits just above the apps, however many rows of them there are
++    if (!expanded) document.documentElement.style.setProperty("--apps-h", $("grid").offsetHeight + "px");
+     if (OLD_ENGINE) {
+       // no grid: app.css wraps the tiles in a flex box. The Night dock is exactly as wide as GRID_COLS
+       // tiles and their gaps (its padding too); Classic and OLED fill the width the grid would, as the
+@@ -2732,6 +3017,7 @@
+ 
+   function paintFocus() {
+     saveFocusSoon();
++    if (zone === "allch") { renderAllch(false); return; }   // local change: All channels
+     if (zone === "settings") { renderSettings(); return; }
+     if (zone === "smart") { window.smartHome.paint(); return; }
+     if (zone === "ambient") { renderAmbientMusic(); return; }
+@@ -2787,6 +3073,7 @@
+       zone = "grid";
+       g = Math.max(0, Math.min(g, gridEls.length - 1));
+       if (gridEls[g]) gridEls[g].classList.add("focus");
++      keepGridInView();
+       hero(null);
+       $("place").style.visibility = "";
+       showPhoto();
+@@ -2794,6 +3081,30 @@
+     renderHint();
+   }
+ 
++  // local change: Classic's apps sit along the bottom of the screen and More apps grows upwards
++  // from there (app.css). A list taller than the room under the clock panel slides, just enough to
++  // keep the focused row (and its name) between the clock panel and the bottom edge, and stays put
++  // while the focused row already shows; back in place when the list closes.
++  var gridShift = 0;   // px, positive moves the apps down
++  function keepGridInView() {
++    var sec = $("apps-section"), el = gridEls[g];
++    var shift = 0;
++    if (!NIGHT && expanded && zone === "grid" && el) {
++      var rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
++      // where the row would be with no slide, measured inside the section so a slide still running does not throw it off
++      var base = sec.offsetTop - sec.getBoundingClientRect().top, r = el.getBoundingClientRect();
++      var top = base + r.top - 1 * rem, bottom = base + r.bottom + 3.5 * rem;   // room for the focus lift and the name
++      var minY = 3.5 * rem, maxY = window.innerHeight - 1.5 * rem;              // the whole screen: the clock steps aside while All apps is open
++      shift = gridShift;
++      if (bottom + shift > maxY) shift = maxY - bottom;
++      else if (top + shift < minY) shift = minY - top;
++      shift = Math.round(shift);
++    }
++    if (shift === gridShift) return;
++    gridShift = shift;
++    sec.style.transform = shift ? "translateY(" + shift + "px)" : "";
++  }
++
+   function nearestInRow(row, x) {
+     var best = row * GRID_COLS, bestD = Infinity;
+     for (var i = row * GRID_COLS; i < Math.min(gridEls.length, (row + 1) * GRID_COLS); i++) {
+@@ -2810,13 +3121,18 @@
+   function move(dx, dy) {
+     touched = true;
+     if (document.documentElement.dir === "rtl") dx = -dx;
++    if (zone === "allch") { allchMove(dx, dy); return; }   // local change: All channels
+     if (zone === "settings") { setMove(dx, dy); return; }
+     if (zone === "smart") { window.smartHome.move(dx, dy); return; }
+     if (zone === "gear") { if (dy) { gi = Math.max(0, Math.min(1, gi + dy)); renderGear(); } return; }
+     if (zone === "appmenu") { if (dy) { amI = Math.max(0, Math.min(amItems.length - 1, amI + dy)); renderAppMenu(); } return; }
+     if (zone === "shelfmenu") { if (dy) { smI = Math.max(0, Math.min(smItems.length - 1, smI + dy)); renderShelfMenu(); } return; }
+     if (zone === "updask") { if (dy) { ai = Math.max(0, Math.min(1, ai + dy)); renderAsk(); } return; }
+-    if (zone === "inputs") { if (dy) { inI = Math.max(0, Math.min(inItems.length - 1, inI + dy)); renderInputMenu(); } return; }
++    if (zone === "inputs") {
++      if (dx && lightAdjust(dx)) return;   // local change: Lights, Brightness and Colour rows
++      if (dy) { inI = Math.max(0, Math.min(inItems.length - 1, inI + dy)); renderInputMenu(); }
++      return;
++    }
+     if (lift) { moveLift(dx, dy); return; }
+     if (zone === "ambient") {
+       if (dx < 0) ambI = Math.max(0, ambI - 1);
+@@ -2926,7 +3242,8 @@
+         g -= GRID_COLS;
+       } else if (row < lastRow) {
+         g = Math.min(g + GRID_COLS, gridEls.length - 1);
+-      } else if (dy > 0 && !expanded && gridItems.some(function (x) { return x.kind === "more"; })) {
++      // local change: on Classic only the All apps button opens the full list (Down did it by surprise)
++      } else if (dy > 0 && NIGHT && !expanded && gridItems.some(function (x) { return x.kind === "more"; })) {
+         // Down from the bottom row of the dock opens the full apps view (#98), on the same app
+         dockBack = gridKey(gridItems[g]);
+         expanded = true; renderGrid();
+@@ -2990,6 +3307,7 @@
+       toggleScreenOff(false);
+       return;
+     }
++    if (zone === "allch") { closeAllch(); paintFocus(); return; }   // local change: Back closes All channels
+     if (kidsOn()) { window.KidsMode.home(); return; }
+     if (zone === "ambient") {
+       ambientDismissed = true;
+@@ -3043,6 +3361,7 @@
+ 
+   function activate() {
+     touched = true;
++    if (zone === "allch") { allchOk(); return; }   // local change: All channels
+     if (zone === "settings") { setActivate(); return; }
+     if (zone === "smart") { window.smartHome.ok(); return; }
+     if (zone === "gear") { if (gi === 0) openSettings(); else openTvSettings(); return; }
+@@ -3091,6 +3410,7 @@
+     var a = gridItems[g], el = gridEls[g];
+     if (!a) return;
+     if (a.kind === "more") { dockBack = null; expanded = true; renderGrid(); paintFocus(); return; }
++    if (a.kind === "allch") { expanded = false; renderGrid(); zone = "shelf"; openAllch(); return; }   // local change: All channels from All apps
+     if (a.kind === "gear") { openGear(); return; }
+     if (a.kind === "smart") { openSmart(); return; }
+     if (a.kind === "devmode") { openDevMode(); return; }
+@@ -3436,6 +3756,20 @@
+       rows.push({ kind: "choice", key: "look:" + id, label: t("look_" + id), sub: t("look_" + id + "_sub"), checked: look === id,
+         act: function () { ST.look = id; keep("tvhome.look", id); saveSettings(); } });
+     });
++    // local change: Airtel colours, a switch on top of Classic (seen straight away, no restart)
++    if (look === "classic") rows.push({ kind: "toggle", key: "airtel-theme", label: t("airtel_theme"), sub: t("airtel_theme_sub"),
++      value: airtelTheme() ? t("on") : t("off"), act: function () {
++        ST.airtel_theme = !airtelTheme(); saveSettings(); applyAirtelTheme();
++      } });
++    // local change: when the TV turns on, the last used input or app (Resume.kt), or this home
++    if (TV && TV.resumeLast) {
++      var resume = false;
++      try { resume = !!TV.resumeLast(); } catch (e) {}
++      rows.push({ kind: "cycle", key: "resume-last", label: t("resume_last"), sub: t("resume_last_sub"),
++        value: t(resume ? "resume_last_on" : "resume_last_off"), act: function () {
++          try { TV.setResumeLast(!resume); } catch (e) {}
++        } });
++    }
+     if (look === "classic") {
+       rows.push({ kind: "toggle", key: "keep-photo", label: t("keep_photo"), sub: t("keep_photo_sub"), value: KEEP_PHOTO ? t("on") : t("off"), act: function () {
+         KEEP_PHOTO = !KEEP_PHOTO; ST.keep_photo = KEEP_PHOTO;
+@@ -3476,6 +3810,17 @@
+       } });
+     // the TV's own screensaver (Google TV's Ambient mode) and the albums it shows
+     rows.push(head(t("ambient_head")));
++    // local change: pick which of the TV's screensavers shows when idle (here SkyClock or Google's own)
++    var savers = screensaverChoices(), saverNow = -1;
++    savers.list.forEach(function (s, i) { if (s.id === savers.current) saverNow = i; });
++    if (savers.list.length > 1) rows.push({ kind: "cycle", key: "screensaver-pick", label: t("screensaver_pick"), sub: t("screensaver_pick_sub"),
++      value: saverNow < 0 ? t("off") : screensaverName(savers.list[saverNow]), act: function () {
++        var next = savers.list[(saverNow + 1) % savers.list.length], ok = false;
++        try { ok = !!TV.setScreensaver(next.id); } catch (e) {}
++        if (!ok) SET.msg = t("no_screensaver");
++      } });
++    // the albums belong to Google's screensaver, so the row shows only while that one is chosen
++    if (savers.list.length < 2 || (saverNow >= 0 && isGoogleSaver(savers.list[saverNow])))
+     rows.push({ kind: "action", key: "ambient", label: t("ambient_settings"), sub: t("ambient_settings_sub"),
+       act: function () { openAmbientSettings(); } });
+     // Smart Idle & OLED-safe Ambient Mode
+@@ -4365,7 +4710,7 @@
+   function settingsKey() {
+     if (kidsOn()) { window.KidsMode.askPin(); return; }
+     if (idlePhotoInput(null)) return;
+-    if (zone === "gear" || zone === "settings" || zone === "smart" || zone === "appmenu" || zone === "shelfmenu" || zone === "updask" || zone === "inputs") { goHome(); return; }
++    if (zone === "gear" || zone === "settings" || zone === "smart" || zone === "appmenu" || zone === "shelfmenu" || zone === "updask" || zone === "inputs" || zone === "allch") { goHome(); return; }
+     openGear();
+   }
+ 
+@@ -4730,6 +5075,8 @@
+     wakeScreen: function () { toggleScreenOff(false); },
+     isScreenOff: function () { return screenOffActive; },
+     noDream: function () { note(t("no_dream")); },
++    channelDone: function (ok) { if (!ok) note(t("channel_failed")); },   // local change: the Channels row (BoxRemote)
++    lightDone: function (ok) { if (!ok) note(t("light_failed")); },   // local change: Lights (quiet when it worked)
+     // the remote's Settings/gear key, caught by the launcher natively (MainActivity.dispatchKeyEvent)
+     settingsKey: function () { blip(0, 0); settingsKey(); },
+     resume: function () { toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); sceneVideos(true); refreshMusic(); refreshCards(); if (window.AmbientWeather) window.AmbientWeather.resume(); resetIdlePhoto(); },
+diff --git a/tv-home/web/i18n.js b/tv-home/web/i18n.js
+index 55654cf..8d74073 100644
+--- a/tv-home/web/i18n.js
++++ b/tv-home/web/i18n.js
+@@ -208,6 +208,12 @@
+     look_oled_sub: "Pitch-black background for OLEDs, glowing focus, burn-in protection",
+     look_classic: "Classic",
+     look_classic_sub: "Your photos and a grid of app banners",
++    resume_last: "When the TV turns on",
++    resume_last_sub: "Open what was last watched (Airtel, a channel or an app), or start on this home",
++    resume_last_on: "Last used",
++    resume_last_off: "This home",
++    airtel_theme: "Airtel colours",
++    airtel_theme_sub: "Dark red background and red highlights, like the Airtel box",
+     keep_photo: "Keep one photo",
+     keep_photo_sub: "Stop the background changing",
+     keep_photo_pick: "Photo",
+@@ -335,6 +341,31 @@
+     no_screensaver: "This TV has no screensaver to open.",
+     no_dream: "The TV did not start the photos. Try again, or restart the TV if it keeps happening.",
+     ambient_head: "Screensaver",
++    channels_head: "Channels",
++    lights: "Lights",
++    quick_light: "Lights",
++    quick_light_sub: "The Halonix bulb: on, off, bright, warm, cool, night light",
++    light_on: "Turn on", light_on_sub: "As it was last",
++    light_off: "Turn off", light_off_sub: "",
++    light_bri: "Brightness {n}%", light_col: "Colour: {c}", light_adjust_sub: "Left and right to change",
++    light_c_warm: "Warm white", light_c_cool: "Cool white", light_c_red: "Red", light_c_orange: "Orange",
++    light_c_yellow: "Yellow", light_c_green: "Green", light_c_blue: "Blue", light_c_purple: "Purple", light_c_pink: "Pink",
++    light_night: "Night light", light_night_sub: "Very dim and warm",
++    light_sending: "Lights: {what}…",
++    light_busy: "Still sending the last one. Try again in a moment.",
++    light_done: "Lights done",
++    light_failed: "The bulb did not answer. Try again, or use the Halonix app.",
++    all_channels: "All channels",
++    all_apps: "All apps",
++    allch_tamil: "Tamil",
++    allch_all: "All",
++    allch_hint: "OK to watch, Back to close",
++    channel_n: "Channel {n}",
++    channel_busy: "Still changing the channel. Try again in a moment.",
++    channel_failed: "The Airtel box did not answer. Use its own remote this time.",
++    screensaver_pick: "Screensaver to show",
++    screensaver_pick_sub: "Press OK to switch. It starts when the TV has been idle for a while.",
++    screensaver_google: "Google Photos (the TV's own)",
+     ambient_settings: "Google Photos albums",
+     ambient_settings_sub: "Which albums show while the TV is idle.",
+     quick_bluetooth: "Bluetooth devices",
+diff --git a/tv-home/web/index.html b/tv-home/web/index.html
+index 361e0ad..95f3809 100644
+--- a/tv-home/web/index.html
++++ b/tv-home/web/index.html
+@@ -160,6 +160,7 @@
+ <script src="kids.js"></script>
+ <script src="spotify-player.js"></script>
+ <script src="cards.js"></script>
++<script src="airtel-channels.js"></script><!-- local change: All channels (Airtel's list) -->
+ <script src="app.js"></script>
+ </body>
+ </html>
+diff --git a/tv-home/web/mock.js b/tv-home/web/mock.js
+index 3175935..1f42f6e 100644
+--- a/tv-home/web/mock.js
++++ b/tv-home/web/mock.js
+@@ -95,6 +95,11 @@
+   if (arg("clockstyle")) cfg.home.clock_style = arg("clockstyle");
+   if (arg("wxfx")) cfg.home.ambient_weather = arg("wxfx") !== "off";
+   if (arg("sungrade")) cfg.home.ambient_sun_grade = arg("sungrade") !== "off";
++  // local change: channels=101:Sun TV,102:KTV  home.channels, the Channels row; kw=off hides Keep watching
++  // (101:Sun TV:sun-tv takes its logo from logos/sun-tv.png; airtel=1 home.airtel_theme)
++  if (arg("channels")) cfg.home.channels = arg("channels").split(",").map(function (p) { var b = p.split(":"); return { number: b[0], name: b[1], image: b[2] ? "logos/" + b[2] + ".png" : undefined }; });
++  if (arg("airtel")) cfg.home.airtel_theme = arg("airtel") !== "off";
++  if (arg("kw") === "off") cfg.home.keep_watching = false;
+   if (arg("unit")) cfg.home.wx_unit = arg("unit");   // home.wx_unit: c or f (#56)
+   if (arg("video")) cfg.home.video_url = arg("video");
+   // ---------- kids mode, for ?kids= (bridge/kids.py makes the same shape; the PIN here is 1234) ----------
